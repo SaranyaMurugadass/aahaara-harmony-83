@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Aahaara360 Ayurvedic Design System - All colors, gradients, fonts, etc defined here. 
+All colors MUST be HSL for proper theming.
+*/
+
+@layer base {
+  :root {
+    /* Core Ayurvedic Color Palette */
+    --background: 34 24% 96%;
+    --foreground: 28 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 28 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 28 25% 15%;
+
+    /* Ayurvedic Primary Colors - Warm Earth Tones */
+    --primary: 28 73% 52%;        /* Warm turmeric orange */
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 35 88% 65%;   /* Lighter golden glow */
+
+    /* Secondary - Healing Green */
+    --secondary: 142 52% 45%;      /* Ayurvedic herb green */
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted Earth Tones */
+    --muted: 35 20% 92%;
+    --muted-foreground: 28 15% 45%;
+
+    /* Accent - Peaceful Blue-Green */
+    --accent: 175 35% 70%;
+    --accent-foreground: 28 25% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 35 15% 87%;
+    --input: 35 15% 90%;
+    --ring: 28 73% 52%;
+
+    /* Ayurvedic Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-healing: linear-gradient(135deg, hsl(var(--secondary)), hsl(142 60% 55%));
+    --gradient-earth: linear-gradient(180deg, hsl(34 24% 96%), hsl(35 20% 92%));
+    --gradient-sunset: linear-gradient(135deg, hsl(28 73% 52%), hsl(35 88% 65%), hsl(142 52% 45%));
+
+    /* Shadows with Ayurvedic Colors */
+    --shadow-warm: 0 10px 30px -10px hsl(var(--primary) / 0.2);
+    --shadow-healing: 0 8px 25px -8px hsl(var(--secondary) / 0.15);
+    --shadow-soft: 0 4px 20px -4px hsl(28 25% 15% / 0.1);
+
+    /* Animations */
+    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark Mode Ayurvedic Colors */
+    --background: 28 15% 8%;
+    --foreground: 35 20% 92%;
+
+    --card: 28 20% 12%;
+    --card-foreground: 35 20% 92%;
+
+    --popover: 28 20% 12%;
+    --popover-foreground: 35 20% 92%;
+
+    --primary: 35 88% 65%;         /* Brighter golden in dark */
+    --primary-foreground: 28 15% 8%;
+    --primary-glow: 28 73% 52%;
+
+    --secondary: 142 60% 55%;      /* Brighter green in dark */
+    --secondary-foreground: 28 15% 8%;
+
+    --muted: 28 20% 15%;
+    --muted-foreground: 35 15% 65%;
+
+    --accent: 175 40% 60%;
+    --accent-foreground: 35 20% 92%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 28 20% 18%;
+    --input: 28 20% 15%;
+    --ring: 35 88% 65%;
+
+    /* Dark Mode Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-healing: linear-gradient(135deg, hsl(var(--secondary)), hsl(142 65% 50%));
+    --gradient-earth: linear-gradient(180deg, hsl(28 15% 8%), hsl(28 20% 12%));
+
+    /* Dark Mode Shadows */
+    --shadow-warm: 0 10px 30px -10px hsl(var(--primary) / 0.3);
+    --shadow-healing: 0 8px 25px -8px hsl(var(--secondary) / 0.25);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
