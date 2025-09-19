@@ -179,7 +179,7 @@ const diseaseQuestions = [
   }
 ];
 
-const DiseaseAnalysis = ({ patient }) => {
+const DiseaseAnalysis = ({ patient, onComplete }: { patient: any, onComplete?: (results: any) => void }) => {
   const [answers, setAnswers] = useState({});
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [showResults, setShowResults] = useState(false);
@@ -284,6 +284,12 @@ const DiseaseAnalysis = ({ patient }) => {
     }
   };
 
+  const handleComplete = () => {
+    if (onComplete) {
+      onComplete(analyzeHealthProfile());
+    }
+  };
+
   const progress = ((currentQuestion + 1) / diseaseQuestions.length) * 100;
   const currentQ = diseaseQuestions[currentQuestion];
   const hasAnswered = answers[currentQ.id] && answers[currentQ.id].length > 0;
@@ -346,7 +352,7 @@ const DiseaseAnalysis = ({ patient }) => {
             <Button variant="outline" onClick={() => setShowResults(false)}>
               Review Answers
             </Button>
-            <Button className="flex-1">
+            <Button onClick={handleComplete} className="flex-1">
               Complete Analysis
             </Button>
           </div>

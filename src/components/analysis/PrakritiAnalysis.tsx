@@ -181,9 +181,9 @@ const PrakritiAnalysis = ({ patient, onComplete }) => {
               <div key={dosha} className="space-y-2">
                 <div className="flex justify-between">
                   <Label className="capitalize font-medium">{dosha}</Label>
-                  <span className="text-sm font-medium">{percentage}%</span>
+                  <span className="text-sm font-medium">{percentage as number}%</span>
                 </div>
-                <Progress value={percentage} className="h-3" />
+                <Progress value={percentage as number} className="h-3" />
               </div>
             ))}
           </div>

@@ -1,9 +1,35 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Database, FileText, LogOut, Search, Plus } from "lucide-react";
+import { Users, Database, FileText, LogOut, Search, Plus, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const DoctorDashboard = () => {
+  const [stats, setStats] = useState({
+    totalPatients: 127,
+    activePlans: 89,
+    foodItems: 450,
+    thisWeek: 23
+  });
+
+  // Simulate real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStats(prev => ({
+        totalPatients: prev.totalPatients + Math.floor(Math.random() * 2),
+        activePlans: prev.activePlans + Math.floor(Math.random() * 1),
+        foodItems: prev.foodItems + Math.floor(Math.random() * 5),
+        thisWeek: prev.thisWeek + Math.floor(Math.random() * 1)
+      }));
+    }, 10000); // Update every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleLogout = () => {
+    // Navigate to home page
+    window.location.href = '/';
+  };
   return (
     <div className="min-h-screen bg-gradient-earth">
       {/* Header */}
@@ -24,7 +50,7 @@ const DoctorDashboard = () => {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -42,7 +68,11 @@ const DoctorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Patients</p>
-                  <p className="text-2xl font-bold text-primary">127</p>
+                  <p className="text-2xl font-bold text-primary">{stats.totalPatients}</p>
+                  <p className="text-xs text-green-600 flex items-center mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    +5 this month
+                  </p>
                 </div>
                 <Users className="w-8 h-8 text-primary" />
               </div>
@@ -54,7 +84,11 @@ const DoctorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Plans</p>
-                  <p className="text-2xl font-bold text-secondary">89</p>
+                  <p className="text-2xl font-bold text-secondary">{stats.activePlans}</p>
+                  <p className="text-xs text-green-600 flex items-center mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    +12 this week
+                  </p>
                 </div>
                 <FileText className="w-8 h-8 text-secondary" />
               </div>
@@ -66,7 +100,11 @@ const DoctorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Food Items</p>
-                  <p className="text-2xl font-bold text-accent">450+</p>
+                  <p className="text-2xl font-bold text-accent">{stats.foodItems}+</p>
+                  <p className="text-xs text-blue-600 flex items-center mt-1">
+                    <Plus className="w-3 h-3 mr-1" />
+                    Database growing
+                  </p>
                 </div>
                 <Database className="w-8 h-8 text-accent" />
               </div>
@@ -78,7 +116,11 @@ const DoctorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">This Week</p>
-                  <p className="text-2xl font-bold text-primary">23</p>
+                  <p className="text-2xl font-bold text-primary">{stats.thisWeek}</p>
+                  <p className="text-xs text-orange-600 flex items-center mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    New consultations
+                  </p>
                 </div>
                 <Plus className="w-8 h-8 text-primary" />
               </div>

@@ -31,7 +31,7 @@ const AddPatientForm = ({ onSubmit }) => {
     }
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<any>({});
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({

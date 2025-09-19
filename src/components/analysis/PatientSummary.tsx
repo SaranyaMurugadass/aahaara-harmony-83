@@ -128,13 +128,13 @@ const PatientSummary = ({ patient }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {Object.entries(patient.prakritiScore).map(([dosha, percentage]) => (
+              {Object.entries(patient.prakritiScore).map(([dosha, percentage]: [string, any]) => (
                 <div key={dosha} className="space-y-2">
                   <div className="flex justify-between">
                     <span className="font-medium capitalize">{dosha}</span>
-                    <span className="text-sm font-medium">{percentage}%</span>
+                    <span className="text-sm font-medium">{percentage as number}%</span>
                   </div>
-                  <Progress value={percentage} className="h-3" />
+                  <Progress value={percentage as number} className="h-3" />
                 </div>
               ))}
             </div>
@@ -229,13 +229,21 @@ const PatientSummary = ({ patient }) => {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex justify-center space-x-4">
-        <Button variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export Summary
-        </Button>
-        <Button>
-          Generate Diet Chart
+      <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Button onClick={handleExportSummary} variant="outline" size="lg" className="flex-1">
+            <Download className="w-4 h-4 mr-2" />
+            Export Summary
+          </Button>
+          <Button onClick={handleGenerateDietChart} size="lg" className="flex-1">
+            <Utensils className="w-4 h-4 mr-2" />
+            Generate Diet Chart
+          </Button>
+        </div>
+        
+        <Button onClick={handleSaveResults} size="lg" className="w-full bg-gradient-healing">
+          <FileText className="w-4 h-4 mr-2" />
+          Complete & Save Results
         </Button>
       </div>
     </div>
