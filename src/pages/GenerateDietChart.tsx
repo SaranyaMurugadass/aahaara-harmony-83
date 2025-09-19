@@ -247,7 +247,7 @@ const GenerateDietChart = () => {
       <CardHeader>
         <CardTitle className="text-lg capitalize">{dayName.replace('day', 'Day ')}</CardTitle>
         <CardDescription>
-          Total Calories: {Object.values(dayData).reduce((sum: number, meal: any) => sum + (meal as any).calories, 0)} cal
+          Total Calories: {(Object.values(dayData) as any[]).reduce((sum: number, meal: any) => sum + (meal?.calories || 0), 0)} cal
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

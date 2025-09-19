@@ -3,9 +3,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { User, Heart, Utensils, Activity, Download } from "lucide-react";
+import { User, Heart, Utensils, Activity, Download, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const PatientSummary = ({ patient }) => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleExportSummary = () => {
+    toast({
+      title: "Exporting Summary",
+      description: "Patient summary is being exported as PDF...",
+    });
+  };
+
+  const handleGenerateDietChart = () => {
+    navigate('/generate-diet-chart', { 
+      state: { 
+        patient,
+        totalCalories,
+        dominantDosha,
+        recommendations 
+      } 
+    });
+  };
+
+  const handleSaveResults = () => {
+    toast({
+      title: "Results Saved",
+      description: "Patient analysis has been saved successfully.",
+    });
+    navigate('/patient-profiles');
+  };
   // Mock calculated data based on patient profile
   const calculateCalorieNeeds = (patient) => {
     // Harris-Benedict formula with activity factor
