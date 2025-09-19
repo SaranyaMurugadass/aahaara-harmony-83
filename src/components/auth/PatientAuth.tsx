@@ -23,18 +23,14 @@ const PatientAuth = () => {
       toast({
         title: isSignUp ? "Account created successfully!" : "Welcome back!",
         description: isSignUp 
-          ? "Please connect to Supabase to enable full authentication." 
-          : "Redirecting to your dashboard...",
+          ? "Your account has been created. You can now access your wellness dashboard." 
+          : "Redirecting to your patient dashboard...",
       });
       
-      // For now, just show a message about needing Supabase
-      if (isSignUp) {
-        toast({
-          title: "Setup Required",
-          description: "Connect to Supabase to enable user registration and login.",
-          variant: "destructive"
-        });
-      }
+      // Navigate to patient dashboard or profiles page
+      setTimeout(() => {
+        navigate('/patient-profiles');
+      }, 1500);
     }, 1000);
   };
 

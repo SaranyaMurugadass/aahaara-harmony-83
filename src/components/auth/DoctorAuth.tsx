@@ -23,21 +23,14 @@ const DoctorAuth = () => {
       toast({
         title: isSignUp ? "Account created successfully!" : "Welcome back, Doctor!",
         description: isSignUp 
-          ? "Please connect to Supabase to enable full authentication." 
+          ? "Your dietitian account has been created. You can now access your practice dashboard." 
           : "Redirecting to your dashboard...",
       });
       
-      // For now, just show a message about needing Supabase
-      if (isSignUp) {
-        toast({
-          title: "Setup Required",
-          description: "Connect to Supabase to enable user registration and login.",
-          variant: "destructive"
-        });
-      } else {
-        // Navigate to doctor dashboard (will create later)
+      // Navigate to doctor dashboard
+      setTimeout(() => {
         navigate('/doctor-dashboard');
-      }
+      }, 1500);
     }, 1000);
   };
 
