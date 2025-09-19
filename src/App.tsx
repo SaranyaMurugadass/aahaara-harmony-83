@@ -12,6 +12,7 @@ import PatientDashboard from "./pages/PatientDashboard";
 import FoodDatabase from "./pages/FoodDatabase";
 import GenerateDietChart from "./pages/GenerateDietChart";
 import NotFound from "./pages/NotFound";
+import FormDebug from "./components/debug/FormDebug";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/patient-dashboard" element={<PatientDashboard />} />
           <Route path="/food-database" element={<FoodDatabase />} />
           <Route path="/generate-diet-chart" element={<GenerateDietChart />} />
+          <Route path="/debug" element={<FormDebug />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
