@@ -27,9 +27,9 @@ const PatientAuth = () => {
           : "Redirecting to your patient dashboard...",
       });
       
-      // Navigate to patient dashboard or profiles page
+      // Navigate to patient dashboard
       setTimeout(() => {
-        navigate('/patient-profiles');
+        navigate('/patient-dashboard');
       }, 1500);
     }, 1000);
   };

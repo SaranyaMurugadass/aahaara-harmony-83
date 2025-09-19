@@ -8,6 +8,7 @@ import PatientAuth from "./components/auth/PatientAuth";
 import DoctorAuth from "./components/auth/DoctorAuth";
 import DoctorDashboard from "./components/dashboard/DoctorDashboard";
 import PatientProfiles from "./pages/PatientProfiles";
+import PatientDashboard from "./pages/PatientDashboard";
 import FoodDatabase from "./pages/FoodDatabase";
 import GenerateDietChart from "./pages/GenerateDietChart";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/doctor-login" element={<DoctorAuth />} />
           <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
           <Route path="/patient-profiles" element={<PatientProfiles />} />
+          <Route path="/patient-dashboard" element={<PatientDashboard />} />
           <Route path="/food-database" element={<FoodDatabase />} />
           <Route path="/generate-diet-chart" element={<GenerateDietChart />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

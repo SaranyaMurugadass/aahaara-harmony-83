@@ -1,8 +1,10 @@
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { User, Heart, Utensils, Activity, Download, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +12,11 @@ import { useNavigate } from "react-router-dom";
 const PatientSummary = ({ patient }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [editMode, setEditMode] = useState(false);
+  const [editableRecommendations, setEditableRecommendations] = useState({
+    favor: [],
+    avoid: []
+  });
 
   const handleExportSummary = () => {
     toast({
@@ -36,6 +43,26 @@ const PatientSummary = ({ patient }) => {
     });
     navigate('/patient-profiles');
   };
+  // Initialize editable recommendations
+  useEffect(() => {
+    const baseRecommendations = getDietaryRecommendations(patient.prakritiScore ? 
+      Object.entries(patient.prakritiScore).reduce((a, b) => 
+        patient.prakritiScore[a[0]] > patient.prakritiScore[b[0]] ? a : b
+      )[0] : 'Vata');
+    setEditableRecommendations(baseRecommendations);
+  }, [patient]);
+
+  const handleEditToggle = () => {
+    if (editMode) {
+      // Save the changes
+      toast({
+        title: "Recommendations Updated",
+        description: "Personalized recommendations have been saved successfully.",
+      });
+    }
+    setEditMode(!editMode);
+  };
+
   // Mock calculated data based on patient profile
   const calculateCalorieNeeds = (patient) => {
     // Harris-Benedict formula with activity factor
@@ -106,7 +133,7 @@ const PatientSummary = ({ patient }) => {
     : "Vata";
   
   const mealDistribution = getMealDistribution(totalCalories, dominantDosha);
-  const recommendations = getDietaryRecommendations(dominantDosha);
+  const recommendations = editMode ? editableRecommendations : getDietaryRecommendations(dominantDosha);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -214,32 +241,67 @@ const PatientSummary = ({ patient }) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-medium">Dietary Recommendations</h4>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setEditMode(!editMode)}
+            >
+              {editMode ? "Save Changes" : "Edit Recommendations"}
+            </Button>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <h4 className="font-medium text-green-700 dark:text-green-400 mb-3">
                 ✓ Foods to Favor
               </h4>
-              <ul className="space-y-1 text-sm">
-                {recommendations.favor.map((item, index) => (
-                  <li key={index} className="flex items-start">
-                    <span className="text-green-600 mr-2">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              {editMode ? (
+                <Textarea
+                  value={editableRecommendations.favor.join('\n')}
+                  onChange={(e) => setEditableRecommendations(prev => ({
+                    ...prev,
+                    favor: e.target.value.split('\n').filter(item => item.trim())
+                  }))}
+                  className="min-h-[120px] text-sm"
+                  placeholder="Enter each food item on a new line..."
+                />
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {recommendations.favor.map((item, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div>
               <h4 className="font-medium text-red-700 dark:text-red-400 mb-3">
                 ✗ Foods to Minimize
               </h4>
-              <ul className="space-y-1 text-sm">
-                {recommendations.avoid.map((item, index) => (
-                  <li key={index} className="flex items-start">
-                    <span className="text-red-600 mr-2">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              {editMode ? (
+                <Textarea
+                  value={editableRecommendations.avoid.join('\n')}
+                  onChange={(e) => setEditableRecommendations(prev => ({
+                    ...prev,
+                    avoid: e.target.value.split('\n').filter(item => item.trim())
+                  }))}
+                  className="min-h-[120px] text-sm"
+                  placeholder="Enter each food item on a new line..."
+                />
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {recommendations.avoid.map((item, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="text-red-600 mr-2">•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
           
