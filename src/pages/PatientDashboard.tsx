@@ -104,6 +104,28 @@ const PatientDashboard = () => {
     });
   };
 
+  const handleDownloadReport = (reportType: string) => {
+    toast({
+      title: "Downloading Report",
+      description: `Preparing ${reportType} report for download...`,
+    });
+    
+    setTimeout(() => {
+      toast({
+        title: "Download Complete!",
+        description: "Report downloaded successfully.",
+      });
+      
+      // Create a mock download
+      const element = document.createElement('a');
+      element.setAttribute('download', `${reportType}_report.pdf`);
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    }, 1500);
+  };
+
   const renderTodaysMeals = () => {
     const today = patientData.currentDietChart?.day1;
     if (!today) return null;
@@ -326,7 +348,7 @@ const PatientDashboard = () => {
                         <p className="text-xs text-muted-foreground">Uploaded 2 days ago</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleDownloadReport('blood-test')}>
                       <Download className="w-4 h-4" />
                     </Button>
                   </div>
@@ -338,7 +360,7 @@ const PatientDashboard = () => {
                         <p className="text-xs text-muted-foreground">Generated 1 week ago</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleDownloadReport('consultation')}>
                       <Download className="w-4 h-4" />
                     </Button>
                   </div>

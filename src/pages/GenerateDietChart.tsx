@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, ArrowLeft, Wand2, Download, Edit, RefreshCw, User, Save } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 // Import food images
@@ -110,11 +110,16 @@ const mockDietChart = {
 
 const GenerateDietChart = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  
+  // Check if this is a patient view only mode
+  const { patient: patientFromState, viewOnly } = location.state || {};
+  
+  const [selectedPatient, setSelectedPatient] = useState(patientFromState || null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentView, setCurrentView] = useState("select"); // select, generating, edit, final
-  const [generatedChart, setGeneratedChart] = useState(null);
+  const [currentView, setCurrentView] = useState(viewOnly ? "final" : "select"); // select, generating, edit, final
+  const [generatedChart, setGeneratedChart] = useState(viewOnly ? mockDietChart : null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingMeal, setEditingMeal] = useState(null);
   const [customMeal, setCustomMeal] = useState("");
@@ -385,13 +390,15 @@ const GenerateDietChart = () => {
                 </p>
               </div>
               <div className="flex space-x-2">
-                <Button variant="outline" onClick={handleRegenerateChart}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Regenerate
-                </Button>
+                {!viewOnly && (
+                  <Button variant="outline" onClick={handleRegenerateChart}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </Button>
+                )}
                 <Button onClick={handleExportPDF}>
                   <Download className="w-4 h-4 mr-2" />
-                  Export PDF
+                  {viewOnly ? 'Download PDF' : 'Export PDF'}
                 </Button>
               </div>
             </div>
@@ -459,17 +466,17 @@ const GenerateDietChart = () => {
             <div>
               <Button 
                 variant="ghost" 
-                onClick={() => navigate('/doctor-dashboard')}
+                onClick={() => navigate(viewOnly ? '/patient-dashboard' : '/doctor-dashboard')}
                 className="mb-2"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                {viewOnly ? 'Back to Dashboard' : 'Back to Dashboard'}
               </Button>
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Generate 7-Day Diet Chart
+                {viewOnly ? `Diet Chart - ${selectedPatient?.name}` : 'Generate 7-Day Diet Chart'}
               </h1>
               <p className="text-sm text-muted-foreground">
-                AI-powered automatic 7-day diet chart generation based on patient analysis
+                {viewOnly ? 'Your personalized 7-day Ayurvedic meal plan' : 'AI-powered automatic 7-day diet chart generation based on patient analysis'}
               </p>
             </div>
           </div>
