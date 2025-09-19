@@ -4,6 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Search, ArrowLeft, Utensils, Plus, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -88,8 +91,10 @@ const FoodDatabase = () => {
   const [selectedMeal, setSelectedMeal] = useState("breakfast");
   const [searchTerm, setSearchTerm] = useState("");
   const [savedItems, setSavedItems] = useState([]);
+  const [foodItems, setFoodItems] = useState(mockFoods);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
-  const currentFoods = mockFoods[selectedDosha]?.[selectedMeal] || [];
+  const currentFoods = foodItems[selectedDosha]?.[selectedMeal] || [];
   const filteredFoods = currentFoods.filter(food =>
     food.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -98,6 +103,24 @@ const FoodDatabase = () => {
     if (!savedItems.find(item => item.id === food.id)) {
       setSavedItems([...savedItems, { ...food, dosha: selectedDosha, mealType: selectedMeal }]);
     }
+  };
+
+  const handleAddFood = (newFood) => {
+    const newId = Math.max(...Object.values(foodItems).flatMap(dosha => 
+      Object.values(dosha).flatMap(meals => meals.map(food => food.id))
+    )) + 1;
+    
+    const foodWithId = { ...newFood, id: newId };
+    
+    setFoodItems(prev => ({
+      ...prev,
+      [selectedDosha]: {
+        ...prev[selectedDosha],
+        [selectedMeal]: [...(prev[selectedDosha]?.[selectedMeal] || []), foodWithId]
+      }
+    }));
+    
+    setShowAddDialog(false);
   };
 
   const renderFoodCard = (food) => (
@@ -260,13 +283,155 @@ const FoodDatabase = () => {
             <p className="text-muted-foreground mb-4">
               Expand your database with more {selectedDosha} {selectedMeal} options
             </p>
-            <Button variant="outline">
-              Add New Food Item
-            </Button>
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  Add New Food Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New {selectedDosha.charAt(0).toUpperCase() + selectedDosha.slice(1)} {selectedMeal.charAt(0).toUpperCase() + selectedMeal.slice(1)} Item</DialogTitle>
+                </DialogHeader>
+                <AddFoodForm onSubmit={handleAddFood} />
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </main>
     </div>
+  );
+};
+
+// Add Food Form Component
+const AddFoodForm = ({ onSubmit }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    calories: "",
+    proteins: "",
+    agni: "Enhances",
+    virigi: "Good",
+    digestible: "Easy",
+    properties: ""
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({
+      ...formData,
+      calories: parseInt(formData.calories),
+      proteins: parseInt(formData.proteins)
+    });
+    setFormData({
+      name: "",
+      calories: "",
+      proteins: "",
+      agni: "Enhances",
+      virigi: "Good",
+      digestible: "Easy",
+      properties: ""
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="name">Food Name</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          placeholder="Enter food name"
+          required
+        />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="calories">Calories</Label>
+          <Input
+            id="calories"
+            type="number"
+            value={formData.calories}
+            onChange={(e) => setFormData(prev => ({ ...prev, calories: e.target.value }))}
+            placeholder="250"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="proteins">Proteins (g)</Label>
+          <Input
+            id="proteins"
+            type="number"
+            value={formData.proteins}
+            onChange={(e) => setFormData(prev => ({ ...prev, proteins: e.target.value }))}
+            placeholder="8"
+            required
+          />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <Label htmlFor="agni">Agni Effect</Label>
+          <select 
+            id="agni"
+            value={formData.agni}
+            onChange={(e) => setFormData(prev => ({ ...prev, agni: e.target.value }))}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="Enhances">Enhances</option>
+            <option value="Supports">Supports</option>
+            <option value="Balances">Balances</option>
+            <option value="Cools">Cools</option>
+            <option value="Stimulates">Stimulates</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="virigi">Virigi</Label>
+          <select 
+            id="virigi"
+            value={formData.virigi}
+            onChange={(e) => setFormData(prev => ({ ...prev, virigi: e.target.value }))}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="Excellent">Excellent</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="digestible">Digestibility</Label>
+          <select 
+            id="digestible"
+            value={formData.digestible}
+            onChange={(e) => setFormData(prev => ({ ...prev, digestible: e.target.value }))}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="Very Easy">Very Easy</option>
+            <option value="Easy">Easy</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Difficult">Difficult</option>
+          </select>
+        </div>
+      </div>
+      
+      <div>
+        <Label htmlFor="properties">Properties</Label>
+        <Textarea
+          id="properties"
+          value={formData.properties}
+          onChange={(e) => setFormData(prev => ({ ...prev, properties: e.target.value }))}
+          placeholder="Warming, Nourishing, Grounding"
+          rows={2}
+          required
+        />
+      </div>
+      
+      <Button type="submit" className="w-full">
+        Add Food Item
+      </Button>
+    </form>
   );
 };
 

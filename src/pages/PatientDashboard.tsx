@@ -20,7 +20,11 @@ import {
   History,
   CalendarDays,
   Download,
-  ArrowLeft
+  ArrowLeft,
+  Trophy,
+  Flame,
+  Star,
+  Check
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -38,10 +42,10 @@ const mockPatientData = {
     endDate: "2024-01-21",
     totalDays: 7,
     day1: {
-      breakfast: { name: "Warm Oatmeal with Ghee", calories: 320, time: "7:00 AM" },
-      lunch: { name: "Kitchari with Vegetables", calories: 420, time: "12:30 PM" },
-      snack: { name: "Herbal Tea with Almonds", calories: 150, time: "4:00 PM" },
-      dinner: { name: "Light Dal with Rice", calories: 350, time: "7:30 PM" }
+      breakfast: { name: "Warm Oatmeal with Ghee", calories: 320, time: "7:00 AM", completed: false },
+      lunch: { name: "Kitchari with Vegetables", calories: 420, time: "12:30 PM", completed: false },
+      snack: { name: "Herbal Tea with Almonds", calories: 150, time: "4:00 PM", completed: false },
+      dinner: { name: "Light Dal with Rice", calories: 350, time: "7:30 PM", completed: false }
     },
     // ... other days would be similar
   },
@@ -53,6 +57,16 @@ const mockPatientData = {
     breakfast: { time: "07:00", enabled: true },
     lunch: { time: "12:30", enabled: true },
     dinner: { time: "19:30", enabled: true }
+  },
+  streakData: {
+    currentStreak: 7,
+    longestStreak: 12,
+    totalDaysCompleted: 45,
+    achievements: [
+      { id: 1, title: "First Week", description: "Completed 7 consecutive days", icon: "Trophy", earned: true },
+      { id: 2, title: "Consistency King", description: "15 days streak", icon: "Flame", earned: false },
+      { id: 3, title: "Diet Master", description: "30 days streak", icon: "Star", earned: false }
+    ]
   }
 };
 
@@ -126,6 +140,41 @@ const PatientDashboard = () => {
     }, 1500);
   };
 
+  const handleMealComplete = (mealType: string) => {
+    setPatientData(prev => ({
+      ...prev,
+      currentDietChart: {
+        ...prev.currentDietChart,
+        day1: {
+          ...prev.currentDietChart.day1,
+          [mealType]: {
+            ...prev.currentDietChart.day1[mealType],
+            completed: true
+          }
+        }
+      }
+    }));
+
+    toast({
+      title: "Meal Completed! 🎉",
+      description: `Great job completing your ${mealType}! Keep up the streak!`,
+    });
+
+    // Check if all meals are completed to update streak
+    const updatedMeals = {
+      ...patientData.currentDietChart.day1,
+      [mealType]: { ...patientData.currentDietChart.day1[mealType], completed: true }
+    };
+    
+    const allMealsCompleted = Object.values(updatedMeals).every((meal: any) => meal.completed);
+    if (allMealsCompleted) {
+      toast({
+        title: "Daily Goal Achieved! 🔥",
+        description: `You've completed all meals today! Streak: ${patientData.streakData.currentStreak + 1} days`,
+      });
+    }
+  };
+
   const renderTodaysMeals = () => {
     const today = patientData.currentDietChart?.day1;
     if (!today) return null;
@@ -133,18 +182,28 @@ const PatientDashboard = () => {
     return (
       <div className="grid gap-4">
         {Object.entries(today).map(([mealType, meal]: [string, any]) => (
-          <Card key={mealType} className="p-4">
+          <Card key={mealType} className={`p-4 transition-all duration-300 ${meal.completed ? 'bg-green-50 border-green-200' : ''}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <ChefHat className="w-5 h-5 text-primary" />
+                <ChefHat className={`w-5 h-5 ${meal.completed ? 'text-green-600' : 'text-primary'}`} />
                 <div>
-                  <p className="font-medium capitalize">{mealType}</p>
+                  <p className={`font-medium capitalize ${meal.completed ? 'line-through text-muted-foreground' : ''}`}>{mealType}</p>
                   <p className="text-sm text-muted-foreground">{meal.name}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">{meal.time}</p>
-                <p className="text-xs text-muted-foreground">{meal.calories} cal</p>
+              <div className="flex items-center space-x-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium">{meal.time}</p>
+                  <p className="text-xs text-muted-foreground">{meal.calories} cal</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={meal.completed ? "secondary" : "default"}
+                  onClick={() => !meal.completed && handleMealComplete(mealType)}
+                  disabled={meal.completed}
+                >
+                  {meal.completed ? <Check className="w-4 h-4" /> : "Mark Done"}
+                </Button>
               </div>
             </div>
           </Card>
@@ -280,6 +339,64 @@ const PatientDashboard = () => {
 
           {/* Right Column - Today's Information */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Streak & Achievements */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Flame className="w-5 h-5 mr-2 text-orange-500" />
+                  Diet Streak & Achievements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-6 mb-6">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-orange-400 to-red-500 flex items-center justify-center mx-auto mb-2">
+                      <Flame className="w-8 h-8 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-orange-600">{patientData.streakData.currentStreak}</p>
+                    <p className="text-sm text-muted-foreground">Current Streak</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 flex items-center justify-center mx-auto mb-2">
+                      <Trophy className="w-8 h-8 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-purple-600">{patientData.streakData.longestStreak}</p>
+                    <p className="text-sm text-muted-foreground">Longest Streak</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center mx-auto mb-2">
+                      <Star className="w-8 h-8 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-green-600">{patientData.streakData.totalDaysCompleted}</p>
+                    <p className="text-sm text-muted-foreground">Total Days</p>
+                  </div>
+                </div>
+                
+                <Separator className="my-4" />
+                
+                <div>
+                  <h4 className="font-semibold mb-3">Achievements</h4>
+                  <div className="grid gap-3">
+                    {patientData.streakData.achievements.map((achievement) => (
+                      <Card key={achievement.id} className={`p-3 ${achievement.earned ? 'bg-yellow-50 border-yellow-200' : 'opacity-60'}`}>
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${achievement.earned ? 'bg-yellow-100' : 'bg-gray-100'}`}>
+                            {achievement.icon === "Trophy" && <Trophy className={`w-5 h-5 ${achievement.earned ? 'text-yellow-600' : 'text-gray-400'}`} />}
+                            {achievement.icon === "Flame" && <Flame className={`w-5 h-5 ${achievement.earned ? 'text-orange-600' : 'text-gray-400'}`} />}
+                            {achievement.icon === "Star" && <Star className={`w-5 h-5 ${achievement.earned ? 'text-purple-600' : 'text-gray-400'}`} />}
+                          </div>
+                          <div>
+                            <p className={`font-medium ${achievement.earned ? 'text-yellow-800' : 'text-gray-500'}`}>{achievement.title}</p>
+                            <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                          </div>
+                          {achievement.earned && <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Earned!</Badge>}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             {/* Today's Meals */}
             <Card>
               <CardHeader>
