@@ -15,14 +15,13 @@ import PatientDashboard from "./pages/PatientDashboard";
 import FoodDatabase from "./pages/FoodDatabase";
 import GenerateDietChart from "./pages/GenerateDietChart";
 import NotFound from "./pages/NotFound";
-import FormDebug from "./components/debug/FormDebug";
 import "./App.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -41,47 +40,46 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/patient-login" element={<PatientAuth />} />
               <Route path="/doctor-login" element={<DoctorAuth />} />
-              <Route 
-                path="/doctor-dashboard" 
+              <Route
+                path="/doctor-dashboard"
                 element={
                   <ProtectedRoute allowedRoles={['doctor']}>
                     <DoctorDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/patient-profiles" 
+              <Route
+                path="/patient-profiles"
                 element={
                   <ProtectedRoute allowedRoles={['doctor']}>
                     <PatientProfiles />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/patient-dashboard" 
+              <Route
+                path="/patient-dashboard"
                 element={
                   <ProtectedRoute allowedRoles={['patient']}>
                     <PatientDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/food-database" 
+              <Route
+                path="/food-database"
                 element={
                   <ProtectedRoute allowedRoles={['doctor', 'patient']}>
                     <FoodDatabase />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/generate-diet-chart" 
+              <Route
+                path="/generate-diet-chart"
                 element={
                   <ProtectedRoute allowedRoles={['doctor']}>
                     <GenerateDietChart />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route path="/debug" element={<FormDebug />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
