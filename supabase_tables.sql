@@ -137,3 +137,4 @@ GRANT ALL ON disease_analyses TO authenticated;
 GRANT ALL ON consultations TO authenticated;
 
 
+

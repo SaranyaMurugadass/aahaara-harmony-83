@@ -1,118 +1,156 @@
-"""
-Serializers for diet chart management
-"""
 from rest_framework import serializers
-from .models import FoodItem, DietChart, MealPlan, MealItem, DietRecommendation
+from .models import DietChart
 
-class FoodItemSerializer(serializers.ModelSerializer):
-    """Serializer for food items"""
-    category_display = serializers.ReadOnlyField(source='get_category_display')
-    season_display = serializers.ReadOnlyField(source='get_season_display')
-    
-    class Meta:
-        model = FoodItem
-        fields = [
-            'id', 'name', 'scientific_name', 'category', 'category_display',
-            'description', 'nutritional_info', 'vata_effect', 'pitta_effect',
-            'kapha_effect', 'is_ayurvedic', 'is_organic', 'season', 'season_display',
-            'preparation_methods', 'contraindications', 'benefits', 'image_url',
-            'calories_per_100g', 'is_active', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-class MealItemSerializer(serializers.ModelSerializer):
-    """Serializer for meal items"""
-    food_item_name = serializers.CharField(source='food_item.name', read_only=True)
-    food_item_category = serializers.CharField(source='food_item.category', read_only=True)
-    total_calories = serializers.ReadOnlyField()
-    
-    class Meta:
-        model = MealItem
-        fields = [
-            'id', 'food_item', 'food_item_name', 'food_item_category', 'quantity',
-            'unit', 'quantity_numeric', 'notes', 'is_optional', 'order', 'total_calories'
-        ]
-
-class MealPlanSerializer(serializers.ModelSerializer):
-    """Serializer for meal plans"""
-    meal_type_display = serializers.ReadOnlyField(source='get_meal_type_display')
-    difficulty_display = serializers.ReadOnlyField(source='get_difficulty_display')
-    meal_items = MealItemSerializer(many=True, read_only=True)
-    
-    class Meta:
-        model = MealPlan
-        fields = [
-            'id', 'meal_type', 'meal_type_display', 'meal_name', 'description',
-            'timing', 'preparation_notes', 'cooking_time', 'difficulty_level',
-            'difficulty_display', 'day_of_week', 'calories', 'is_optional',
-            'meal_items', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-class MealPlanCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating meal plans"""
-    meal_items = MealItemSerializer(many=True, required=False)
-    
-    class Meta:
-        model = MealPlan
-        fields = [
-            'meal_type', 'meal_name', 'description', 'timing', 'preparation_notes',
-            'cooking_time', 'difficulty_level', 'day_of_week', 'calories',
-            'is_optional', 'meal_items'
-        ]
-    
-    def create(self, validated_data):
-        meal_items_data = validated_data.pop('meal_items', [])
-        meal_plan = MealPlan.objects.create(**validated_data)
-        
-        for item_data in meal_items_data:
-            MealItem.objects.create(meal_plan=meal_plan, **item_data)
-        
-        return meal_plan
 
 class DietChartSerializer(serializers.ModelSerializer):
-    """Serializer for diet charts"""
-    patient_name = serializers.CharField(source='patient.user.full_name', read_only=True)
-    created_by_name = serializers.CharField(source='created_by.display_name', read_only=True)
-    chart_type_display = serializers.ReadOnlyField(source='get_chart_type_display')
-    status_display = serializers.ReadOnlyField(source='get_status_display')
-    days_remaining = serializers.ReadOnlyField()
-    progress_percentage = serializers.ReadOnlyField()
-    meal_plans = MealPlanSerializer(many=True, read_only=True)
+    """Serializer for DietChart model."""
+    
+    # Computed fields
+    patient_name = serializers.ReadOnlyField()
+    created_by_name = serializers.ReadOnlyField()
+    total_calories = serializers.SerializerMethodField()
+    meal_count = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
+    can_be_modified = serializers.SerializerMethodField()
     
     class Meta:
         model = DietChart
         fields = [
-            'id', 'patient', 'patient_name', 'chart_name', 'chart_type', 'chart_type_display',
-            'status', 'status_display', 'description', 'duration_days', 'start_date',
-            'end_date', 'days_remaining', 'progress_percentage', 'is_active',
-            'created_by', 'created_by_name', 'based_on_prakriti', 'special_instructions',
-            'contraindications', 'expected_outcomes', 'progress_notes', 'meal_plans',
-            'created_at', 'updated_at'
+            'id', 'patient', 'created_by', 'chart_name', 'chart_type', 'status',
+            'start_date', 'end_date', 'total_days', 'prakriti_analysis', 'disease_analysis',
+            'patient_preferences', 'target_calories', 'meal_distribution', 'dosha_focus',
+            'food_restrictions', 'daily_meals', 'notes', 'is_ai_generated',
+            'generation_parameters', 'version', 'created_at', 'updated_at',
+            'patient_name', 'created_by_name', 'total_calories', 'meal_count',
+            'is_active', 'can_be_modified'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'version']
+    
+    def get_total_calories(self, obj):
+        """Get total calories for the entire chart."""
+        return obj.get_total_calories()
+    
+    def get_meal_count(self, obj):
+        """Get the total number of meals in the chart."""
+        return obj.get_meal_count()
+    
+    def get_is_active(self, obj):
+        """Check if the chart is currently active."""
+        return obj.is_active()
+    
+    def get_can_be_modified(self, obj):
+        """Check if the chart can be modified."""
+        return obj.can_be_modified()
+    
+    def validate(self, data):
+        """Validate the diet chart data."""
+        # Validate date order
+        if data.get('start_date') and data.get('end_date'):
+            if data['start_date'] > data['end_date']:
+                raise serializers.ValidationError("Start date must be before or equal to end date.")
+        
+        # Validate total days matches date range
+        if data.get('start_date') and data.get('end_date') and data.get('total_days'):
+            from datetime import timedelta
+            date_diff = (data['end_date'] - data['start_date']).days + 1
+            if data['total_days'] != date_diff:
+                raise serializers.ValidationError("Total days must match the date range.")
+        
+        # Validate target calories
+        if data.get('target_calories') is not None and data['target_calories'] <= 0:
+            raise serializers.ValidationError("Target calories must be positive.")
+        
+        return data
+
 
 class DietChartCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating diet charts"""
+    """Serializer for creating new diet charts."""
+    
     class Meta:
         model = DietChart
         fields = [
-            'patient', 'chart_name', 'chart_type', 'description', 'duration_days',
-            'start_date', 'end_date', 'based_on_prakriti', 'special_instructions',
-            'contraindications', 'expected_outcomes'
+            'patient', 'chart_name', 'chart_type', 'status', 'start_date', 'end_date',
+            'total_days', 'prakriti_analysis', 'disease_analysis', 'patient_preferences',
+            'target_calories', 'meal_distribution', 'dosha_focus', 'food_restrictions',
+            'daily_meals', 'notes', 'is_ai_generated', 'generation_parameters'
         ]
+    
+    def validate_daily_meals(self, value):
+        """Validate the daily meals structure."""
+        if not value:
+            raise serializers.ValidationError("Daily meals cannot be empty.")
+        
+        # Validate structure
+        for day_key, day_data in value.items():
+            if not isinstance(day_data, dict):
+                raise serializers.ValidationError(f"Day {day_key} must be an object.")
+            
+            for meal_key, meal_data in day_data.items():
+                if not isinstance(meal_data, dict):
+                    raise serializers.ValidationError(f"Meal {meal_key} in {day_key} must be an object.")
+                
+                # Validate required meal fields
+                required_fields = ['name', 'calories']
+                for field in required_fields:
+                    if field not in meal_data:
+                        raise serializers.ValidationError(f"Meal {meal_key} in {day_key} must have {field}.")
+                
+                # Validate calories is positive
+                if meal_data.get('calories', 0) < 0:
+                    raise serializers.ValidationError(f"Meal {meal_key} in {day_key} calories must be non-negative.")
+        
+        return value
 
-class DietRecommendationSerializer(serializers.ModelSerializer):
-    """Serializer for diet recommendations"""
-    dosha_display = serializers.ReadOnlyField(source='get_dosha_display')
-    recommendation_type_display = serializers.ReadOnlyField(source='get_recommendation_type_display')
-    food_items = FoodItemSerializer(many=True, read_only=True)
+
+class DietChartUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating diet charts."""
     
     class Meta:
-        model = DietRecommendation
+        model = DietChart
         fields = [
-            'id', 'dosha_type', 'dosha_display', 'recommendation_type',
-            'recommendation_type_display', 'title', 'description', 'detailed_guidelines',
-            'food_items', 'priority', 'is_active', 'created_by', 'created_at', 'updated_at'
+            'chart_name', 'status', 'prakriti_analysis', 'disease_analysis',
+            'patient_preferences', 'target_calories', 'meal_distribution',
+            'dosha_focus', 'food_restrictions', 'daily_meals', 'notes',
+            'generation_parameters'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate_status(self, value):
+        """Validate status transitions."""
+        if self.instance:
+            current_status = self.instance.status
+            valid_transitions = {
+                'draft': ['active', 'archived'],
+                'active': ['completed', 'archived'],
+                'completed': ['archived'],
+                'archived': ['draft', 'active']
+            }
+            
+            if value not in valid_transitions.get(current_status, []):
+                raise serializers.ValidationError(
+                    f"Cannot change status from {current_status} to {value}."
+                )
+        
+        return value
+
+
+class DietChartSummarySerializer(serializers.ModelSerializer):
+    """Lightweight serializer for diet chart summaries."""
+    
+    patient_name = serializers.ReadOnlyField()
+    created_by_name = serializers.ReadOnlyField()
+    total_calories = serializers.SerializerMethodField()
+    meal_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DietChart
+        fields = [
+            'id', 'chart_name', 'chart_type', 'status', 'start_date', 'end_date',
+            'total_days', 'target_calories', 'created_at', 'patient_name',
+            'created_by_name', 'total_calories', 'meal_count'
+        ]
+    
+    def get_total_calories(self, obj):
+        return obj.get_total_calories()
+    
+    def get_meal_count(self, obj):
+        return obj.get_meal_count()

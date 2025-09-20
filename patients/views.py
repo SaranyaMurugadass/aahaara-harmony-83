@@ -36,6 +36,59 @@ def patient_list(request):
     patient_data = []
     for patient in patients:
         profile = patient.user.unified_profile.filter(profile_type='patient').first()
+        
+        # Get latest Prakriti analysis
+        latest_prakriti = PrakritiAnalysis.objects.filter(patient=patient).order_by('-analysis_date').first()
+        prakriti_data = None
+        if latest_prakriti:
+            prakriti_data = {
+                'id': str(latest_prakriti.id),
+                'patient': str(latest_prakriti.patient.id),
+                'patient_name': patient.user.full_name,
+                'primary_dosha': latest_prakriti.primary_dosha,
+                'primary_dosha_display': latest_prakriti.get_primary_dosha_display(),
+                'secondary_dosha': latest_prakriti.secondary_dosha,
+                'vata_score': latest_prakriti.vata_score,
+                'pitta_score': latest_prakriti.pitta_score,
+                'kapha_score': latest_prakriti.kapha_score,
+                'total_score': latest_prakriti.total_score,
+                'dosha_percentages': latest_prakriti.dosha_percentages,
+                'analysis_notes': latest_prakriti.analysis_notes,
+                'recommendations': latest_prakriti.recommendations,
+                'status': latest_prakriti.status,
+                'analyzed_by': str(latest_prakriti.analyzed_by.id),
+                'analyzed_by_name': f"{latest_prakriti.analyzed_by.user.first_name} {latest_prakriti.analyzed_by.user.last_name}".strip(),
+                'analysis_date': latest_prakriti.analysis_date.isoformat(),
+                'updated_at': latest_prakriti.updated_at.isoformat(),
+            }
+        
+        # Get active diseases
+        active_diseases = DiseaseAnalysis.objects.filter(patient=patient, is_active=True)
+        diseases_data = []
+        for disease in active_diseases:
+            diseases_data.append({
+                'id': str(disease.id),
+                'patient': str(disease.patient.id),
+                'patient_name': patient.user.full_name,
+                'disease_name': disease.disease_name,
+                'icd_code': disease.icd_code,
+                'severity': disease.severity,
+                'severity_display': disease.get_severity_display(),
+                'status': disease.status,
+                'status_display': disease.get_status_display(),
+                'symptoms': disease.symptoms,
+                'diagnosis_notes': disease.diagnosis_notes,
+                'treatment_plan': disease.treatment_plan,
+                'medications': disease.medications,
+                'follow_up_required': disease.follow_up_required,
+                'follow_up_date': disease.follow_up_date.isoformat() if disease.follow_up_date else None,
+                'diagnosed_by': str(disease.diagnosed_by.id),
+                'diagnosed_by_name': f"{disease.diagnosed_by.user.first_name} {disease.diagnosed_by.user.last_name}".strip(),
+                'diagnosis_date': disease.diagnosis_date.isoformat(),
+                'updated_at': disease.updated_at.isoformat(),
+                'is_active': disease.is_active,
+            })
+        
         patient_info = {
             'id': str(patient.id),
             'patient_id': patient.patient_id,
@@ -50,8 +103,11 @@ def patient_list(request):
             'bmi': patient.bmi,
             'location': profile.get_profile_data('location', '') if profile else '',
             'phone_number': profile.get_profile_data('phone_number', '') if profile else '',
+            'date_of_birth': patient.get_medical_data('date_of_birth'),
             'created_at': patient.created_at,
             'updated_at': patient.updated_at,
+            'prakriti_analysis': prakriti_data,
+            'active_diseases': diseases_data,
         }
         patient_data.append(patient_info)
     

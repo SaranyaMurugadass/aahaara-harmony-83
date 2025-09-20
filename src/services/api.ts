@@ -44,6 +44,7 @@ class ApiClient {
       method: options.method || "GET",
       headers,
       body: options.body,
+      token: this.token,
     });
 
     try {
@@ -458,6 +459,123 @@ class ApiClient {
       ? `/diet-charts/recommendations/?dosha_type=${doshaType}`
       : "/diet-charts/recommendations/";
     return this.request(endpoint);
+  }
+
+  // Food Database Methods
+  async getFoodItems(params?: {
+    search?: string;
+    vata_effect?: string;
+    pitta_effect?: string;
+    kapha_effect?: string;
+    meal_types?: string[];
+    food_category?: string;
+    tags?: string[];
+    rasa?: string[];
+    guna?: string[];
+    virya?: string;
+    min_calories?: number;
+    max_calories?: number;
+    min_protein?: number;
+    max_protein?: number;
+    page?: number;
+    page_size?: number;
+  }) {
+    const searchParams = new URLSearchParams();
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            searchParams.append(key, JSON.stringify(value));
+          } else {
+            searchParams.append(key, value.toString());
+          }
+        }
+      });
+    }
+
+    const endpoint = `/foods/?${searchParams.toString()}`;
+    return this.request(endpoint);
+  }
+
+  async getFoodItem(foodId: string) {
+    return this.request(`/foods/${foodId}/`);
+  }
+
+  async createFoodItem(data: {
+    name: string;
+    serving_size: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    fiber_g: number;
+    rasa: string[];
+    guna: string[];
+    virya: string;
+    vata_effect: string;
+    pitta_effect: string;
+    kapha_effect: string;
+    meal_types: string[];
+    food_category: string;
+    tags: string[];
+  }) {
+    return this.request("/foods/create/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateFoodItem(
+    foodId: string,
+    data: Partial<{
+      name: string;
+      serving_size: string;
+      calories: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+      fiber_g: number;
+      rasa: string[];
+      guna: string[];
+      virya: string;
+      vata_effect: string;
+      pitta_effect: string;
+      kapha_effect: string;
+      meal_types: string[];
+      food_category: string;
+      tags: string[];
+    }>
+  ) {
+    return this.request(`/foods/${foodId}/update/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteFoodItem(foodId: string) {
+    return this.request(`/foods/${foodId}/delete/`, {
+      method: "DELETE",
+    });
+  }
+
+  async importCSVFoods(csvFile: File) {
+    const formData = new FormData();
+    formData.append("csv_file", csvFile);
+
+    return this.request("/foods/import-csv/", {
+      method: "POST",
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
+  async getFoodCategories() {
+    return this.request("/foods/categories/");
+  }
+
+  async getFoodStats() {
+    return this.request("/foods/stats/");
   }
 }
 

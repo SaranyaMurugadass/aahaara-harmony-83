@@ -43,7 +43,7 @@ const App = () => (
               <Route
                 path="/doctor-dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['doctor']}>
+                  <ProtectedRoute allowedRoles={["doctor"]}>
                     <DoctorDashboard />
                   </ProtectedRoute>
                 }
@@ -51,7 +51,7 @@ const App = () => (
               <Route
                 path="/patient-profiles"
                 element={
-                  <ProtectedRoute allowedRoles={['doctor']}>
+                  <ProtectedRoute allowedRoles={["doctor"]}>
                     <PatientProfiles />
                   </ProtectedRoute>
                 }
@@ -59,7 +59,7 @@ const App = () => (
               <Route
                 path="/patient-dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['patient']}>
+                  <ProtectedRoute allowedRoles={["patient"]}>
                     <PatientDashboard />
                   </ProtectedRoute>
                 }
@@ -67,7 +67,7 @@ const App = () => (
               <Route
                 path="/food-database"
                 element={
-                  <ProtectedRoute allowedRoles={['doctor', 'patient']}>
+                  <ProtectedRoute allowedRoles={["doctor", "patient"]}>
                     <FoodDatabase />
                   </ProtectedRoute>
                 }
@@ -75,7 +75,7 @@ const App = () => (
               <Route
                 path="/generate-diet-chart"
                 element={
-                  <ProtectedRoute allowedRoles={['doctor']}>
+                  <ProtectedRoute allowedRoles={["doctor"]}>
                     <GenerateDietChart />
                   </ProtectedRoute>
                 }

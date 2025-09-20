@@ -19,6 +19,7 @@ import {
   Loader2,
   AlertCircle,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -45,12 +46,10 @@ const PatientProfiles = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [prakritiData, setPrakritiData] = useState<{
-    [key: string]: PrakritiAnalysisType;
-  }>({});
-  const [diseaseData, setDiseaseData] = useState<{
-    [key: string]: DiseaseAnalysisType[];
-  }>({});
+  const [prakritiData, setPrakritiData] = useState<PrakritiAnalysisType | null>(
+    null
+  );
+  const [diseaseData, setDiseaseData] = useState<DiseaseAnalysisType[]>([]);
   const [patientSummary, setPatientSummary] =
     useState<PatientSummaryType | null>(null);
 
@@ -95,18 +94,19 @@ const PatientProfiles = () => {
       );
 
       if (Array.isArray(patientsList)) {
-        setPatients(patientsList);
+        // Transform patients to include analysis data
+        const transformedPatients = patientsList.map((patient: any) => ({
+          ...patient,
+          prakriti_analysis: patient.prakriti_analysis || null,
+          active_diseases: patient.active_diseases || [],
+        }));
+
+        setPatients(transformedPatients);
         console.log(
           "✅ Patients set successfully:",
-          patientsList.length,
+          transformedPatients.length,
           "patients"
         );
-
-        // Load analysis data for all patients
-        for (const patient of patientsList) {
-          loadPrakritiAnalyses(patient.id);
-          loadDiseaseAnalyses(patient.id);
-        }
       } else {
         console.error("❌ Patients list is not an array:", patientsList);
         setPatients([]);
@@ -120,24 +120,15 @@ const PatientProfiles = () => {
     }
   };
 
-  const loadPatientSummary = async (patientId: string) => {
+  const loadPatientSummary = async (patientId: number) => {
     try {
       setLoading(true);
       const summary = await apiClient.getPatientSummary(patientId);
       setPatientSummary(summary);
-      // Update the per-patient data structure
-      if (summary.prakriti_analysis) {
-        setPrakritiData((prev) => ({
-          ...prev,
-          [patientId]: summary.prakriti_analysis,
-        }));
-      }
-      if (summary.active_diseases) {
-        setDiseaseData((prev) => ({
-          ...prev,
-          [patientId]: summary.active_diseases,
-        }));
-      }
+      setPrakritiData(summary.prakriti_analysis || null);
+      setDiseaseData(
+        Array.isArray(summary.active_diseases) ? summary.active_diseases : []
+      );
     } catch (err: any) {
       setError(err.message || "Failed to load patient summary");
       console.error("Error loading patient summary:", err);
@@ -147,33 +138,26 @@ const PatientProfiles = () => {
     }
   };
 
-  const loadPrakritiAnalyses = async (patientId: string) => {
+  const loadPrakritiAnalyses = async (patientId: number) => {
     try {
-      const analyses = await apiClient.getPrakritiAnalyses(patientId);
+      const data = await apiClient.getPrakritiAnalyses(patientId);
+      const analyses = data.results || [];
       if (Array.isArray(analyses) && analyses.length > 0) {
-        setPrakritiData((prev) => ({
-          ...prev,
-          [patientId]: analyses[0], // Get the latest analysis
-        }));
+        setPrakritiData(analyses[0]); // Get the latest analysis
       }
     } catch (err: any) {
       console.error("Error loading Prakriti analyses:", err);
     }
   };
 
-  const loadDiseaseAnalyses = async (patientId: string) => {
+  const loadDiseaseAnalyses = async (patientId: number) => {
     try {
-      const analyses = await apiClient.getDiseaseAnalyses(patientId);
-      setDiseaseData((prev) => ({
-        ...prev,
-        [patientId]: Array.isArray(analyses) ? analyses : [],
-      }));
+      const data = await apiClient.getDiseaseAnalyses(patientId);
+      const analyses = data.results || [];
+      setDiseaseData(Array.isArray(analyses) ? analyses : []);
     } catch (err: any) {
       console.error("Error loading disease analyses:", err);
-      setDiseaseData((prev) => ({
-        ...prev,
-        [patientId]: [],
-      }));
+      setDiseaseData([]);
     }
   };
 
@@ -235,16 +219,11 @@ const PatientProfiles = () => {
         pitta_score: scores.pitta,
         kapha_score: scores.kapha,
         analysis_notes: `Prakriti analysis completed for ${selectedPatient.user_name}`,
+        status: "completed",
       });
 
-      // Update patient status
-      await apiClient.updatePatient(selectedPatient.id, {
-        status: "active",
-      });
-
-      // Refresh data
+      // Refresh patient data to show updated status
       await loadPatients();
-      await loadPrakritiAnalyses(selectedPatient.id);
 
       setCurrentView("list");
     } catch (err: any) {
@@ -267,10 +246,12 @@ const PatientProfiles = () => {
         symptoms: analysisData.symptoms || "Various symptoms reported",
         diagnosis_notes: analysisData.diagnosis_notes || "",
         treatment_plan: analysisData.treatment_plan || "",
+        status: "active",
+        is_active: true,
       });
 
-      // Refresh data
-      await loadDiseaseAnalyses(selectedPatient.id);
+      // Refresh patient data to show updated status
+      await loadPatients();
       setCurrentView("list");
     } catch (err: any) {
       setError(err.message || "Failed to save disease analysis");
@@ -315,162 +296,141 @@ const PatientProfiles = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Helper function to check if analyses are completed
-  const isPrakritiCompleted = (patient: Patient) => {
-    return (
-      prakritiData[patient.id] &&
-      prakritiData[patient.id].status === "completed"
-    );
-  };
+  const renderPatientCard = (patient: any) => {
+    // Check analysis status
+    const hasPrakritiAnalysis =
+      patient.prakriti_analysis &&
+      patient.prakriti_analysis.status === "completed";
+    const hasDiseaseAnalysis =
+      patient.active_diseases && patient.active_diseases.length > 0;
 
-  const isDiseaseAnalysisCompleted = (patient: Patient) => {
     return (
-      diseaseData[patient.id] &&
-      diseaseData[patient.id].length > 0 &&
-      diseaseData[patient.id].some((analysis) => analysis.status === "active")
-    );
-  };
-
-  const renderPatientCard = (patient: Patient) => (
-    <Card key={patient.id} className="hover:shadow-lg transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-healing flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {patient.user_name}
-              </h3>
-              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
-                <span>{patient.user_email}</span>
-                <span>•</span>
-                <span>ID: {patient.patient_id}</span>
+      <Card key={patient.id} className="hover:shadow-lg transition-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-healing flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
               </div>
-              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  <span>
-                    Registered: {formatDate(patient.registration_date)}
-                  </span>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {patient.user_name}
+                </h3>
+                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
+                  <span>{patient.user_email}</span>
+                  <span>•</span>
+                  <span>ID: {patient.patient_id}</span>
                 </div>
-                {patient.last_consultation && (
+                <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
                     <span>
-                      Last visit: {formatDate(patient.last_consultation)}
+                      Registered: {formatDate(patient.registration_date)}
                     </span>
+                  </div>
+                  {patient.last_consultation && (
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      <span>
+                        Last visit: {formatDate(patient.last_consultation)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Analysis Status Indicators */}
+                <div className="flex space-x-2 mb-3">
+                  <Badge
+                    variant={hasPrakritiAnalysis ? "default" : "destructive"}
+                    className="text-xs"
+                  >
+                    Prakriti:{" "}
+                    {hasPrakritiAnalysis ? "✓ Completed" : "✗ Pending"}
+                  </Badge>
+                  <Badge
+                    variant={hasDiseaseAnalysis ? "default" : "destructive"}
+                    className="text-xs"
+                  >
+                    Disease:{" "}
+                    {hasDiseaseAnalysis
+                      ? `✓ ${patient.active_diseases.length} conditions`
+                      : "✗ Pending"}
+                  </Badge>
+                </div>
+
+                {/* Prakriti Constitution */}
+                {hasPrakritiAnalysis && patient.prakriti_analysis && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Prakriti Constitution:
+                    </h4>
+                    <div className="flex space-x-2">
+                      <Badge variant="outline" className="text-xs">
+                        Vata:{" "}
+                        {patient.prakriti_analysis.dosha_percentages?.vata || 0}
+                        %
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Pitta:{" "}
+                        {patient.prakriti_analysis.dosha_percentages?.pitta ||
+                          0}
+                        %
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Kapha:{" "}
+                        {patient.prakriti_analysis.dosha_percentages?.kapha ||
+                          0}
+                        %
+                      </Badge>
+                    </div>
+                    <div className="mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Primary:{" "}
+                        {patient.prakriti_analysis.primary_dosha_display}
+                      </Badge>
+                    </div>
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Analysis Status Indicators */}
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      isPrakritiCompleted(patient)
-                        ? "bg-green-500"
-                        : "bg-gray-300"
-                    }`}
-                  ></div>
-                  <span className="text-sm font-medium">
-                    Prakriti Analysis:{" "}
-                    {isPrakritiCompleted(patient) ? "Completed" : "Pending"}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      isDiseaseAnalysisCompleted(patient)
-                        ? "bg-green-500"
-                        : "bg-gray-300"
-                    }`}
-                  ></div>
-                  <span className="text-sm font-medium">
-                    Disease Analysis:{" "}
-                    {isDiseaseAnalysisCompleted(patient)
-                      ? "Completed"
-                      : "Pending"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Prakriti Constitution */}
-              {prakritiData[patient.id] && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Prakriti Constitution:
-                  </h4>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline" className="text-xs">
-                      Vata:{" "}
-                      {prakritiData[patient.id].dosha_percentages?.vata || 0}%
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      Pitta:{" "}
-                      {prakritiData[patient.id].dosha_percentages?.pitta || 0}%
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      Kapha:{" "}
-                      {prakritiData[patient.id].dosha_percentages?.kapha || 0}%
-                    </Badge>
-                  </div>
-                </div>
-              )}
+            <div className="text-right">
+              <Badge className={`${getStatusColor(patient.status)} mb-2`}>
+                {patient.status.charAt(0).toUpperCase() +
+                  patient.status.slice(1)}
+              </Badge>
             </div>
           </div>
 
-          <div className="text-right">
-            <Badge className={`${getStatusColor(patient.status)} mb-2`}>
-              {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
-            </Badge>
+          <div className="flex space-x-2 mt-4">
+            <Button
+              variant={hasPrakritiAnalysis ? "default" : "outline"}
+              size="sm"
+              onClick={() => handlePrakritiAnalysis(patient)}
+              className="flex-1"
+            >
+              {hasPrakritiAnalysis ? "✓ Prakriti Done" : "Prakriti Analysis"}
+            </Button>
+            <Button
+              variant={hasDiseaseAnalysis ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleDiseaseAnalysis(patient)}
+              className="flex-1"
+            >
+              {hasDiseaseAnalysis ? "✓ Disease Done" : "Disease Analysis"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleViewSummary(patient)}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              View Summary
+            </Button>
           </div>
-        </div>
-
-        <div className="flex space-x-2 mt-4">
-          <Button
-            variant={isPrakritiCompleted(patient) ? "default" : "outline"}
-            size="sm"
-            onClick={() => handlePrakritiAnalysis(patient)}
-            className={`flex-1 ${
-              isPrakritiCompleted(patient)
-                ? "bg-green-600 hover:bg-green-700"
-                : ""
-            }`}
-          >
-            {isPrakritiCompleted(patient)
-              ? "✓ Prakriti Done"
-              : "Prakriti Analysis"}
-          </Button>
-          <Button
-            variant={
-              isDiseaseAnalysisCompleted(patient) ? "default" : "outline"
-            }
-            size="sm"
-            onClick={() => handleDiseaseAnalysis(patient)}
-            className={`flex-1 ${
-              isDiseaseAnalysisCompleted(patient)
-                ? "bg-green-600 hover:bg-green-700"
-                : ""
-            }`}
-          >
-            {isDiseaseAnalysisCompleted(patient)
-              ? "✓ Disease Done"
-              : "Disease Analysis"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => handleViewSummary(patient)}
-            className="flex-1 bg-green-600 hover:bg-green-700"
-          >
-            View Summary
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (currentView === "add") {
     return (
@@ -631,8 +591,8 @@ const PatientProfiles = () => {
           </Alert>
         )}
 
-        {/* Search */}
-        <div className="mb-8">
+        {/* Search and Refresh */}
+        <div className="mb-8 flex justify-between items-center">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
@@ -642,6 +602,15 @@ const PatientProfiles = () => {
               className="pl-10"
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={loadPatients}
+            disabled={loading}
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
+          </Button>
         </div>
 
         {/* Loading State */}

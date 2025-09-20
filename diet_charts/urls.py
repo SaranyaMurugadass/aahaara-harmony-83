@@ -1,15 +1,30 @@
-"""
-URL patterns for diet_charts app
-"""
 from django.urls import path
-from . import views
+from .views import (
+    DietChartListCreateView,
+    DietChartDetailView,
+    DietChartSummaryListView,
+    get_patient_diet_charts,
+    generate_diet_chart,
+    get_diet_chart_stats
+)
 
 urlpatterns = [
-    path('foods/', views.FoodItemListView.as_view(), name='food_list'),
-    path('food-database/', views.food_database, name='food_database'),
-    path('charts/', views.DietChartListCreateView.as_view(), name='diet_chart_list_create'),
-    path('charts/<int:pk>/', views.DietChartDetailView.as_view(), name='diet_chart_detail'),
-    path('charts/<int:diet_chart_id>/meals/', views.MealPlanListCreateView.as_view(), name='meal_plan_list_create'),
-    path('generate/', views.generate_diet_chart, name='generate_diet_chart'),
-    path('recommendations/', views.DietRecommendationListView.as_view(), name='diet_recommendations'),
+    # Main CRUD endpoints
+    path('', DietChartListCreateView.as_view(), name='dietchart-list-create'),
+    path('create/', DietChartListCreateView.as_view(), name='dietchart-create'),
+    path('<uuid:id>/', DietChartDetailView.as_view(), name='dietchart-detail'),
+    path('<uuid:id>/update/', DietChartDetailView.as_view(), name='dietchart-update'),
+    path('<uuid:id>/delete/', DietChartDetailView.as_view(), name='dietchart-delete'),
+    
+    # Summary endpoint
+    path('summaries/', DietChartSummaryListView.as_view(), name='dietchart-summaries'),
+    
+    # Patient-specific endpoints
+    path('patient/<uuid:patient_id>/', get_patient_diet_charts, name='patient-diet-charts'),
+    
+    # Generation endpoint
+    path('generate/', generate_diet_chart, name='generate-diet-chart'),
+    
+    # Statistics endpoint
+    path('stats/', get_diet_chart_stats, name='diet-chart-stats'),
 ]

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'django_extensions',
+    'food_database',
     'django_celery_beat',
     'django_celery_results',
     'authentication',
