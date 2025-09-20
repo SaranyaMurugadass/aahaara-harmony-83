@@ -4,6 +4,7 @@ Patient-related models for medical data and consultations - Updated for unified 
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+import uuid
 from authentication.models import User, UnifiedProfile, UnifiedPatient
 
 class Patient(models.Model):
@@ -104,7 +105,8 @@ class PrakritiAnalysis(models.Model):
         ('reviewed', 'Reviewed'),
     ]
     
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='prakriti_analyses')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(UnifiedPatient, on_delete=models.CASCADE, related_name='prakriti_analyses')
     primary_dosha = models.CharField(max_length=20, choices=DOSHA_CHOICES)
     secondary_dosha = models.CharField(max_length=20, choices=DOSHA_CHOICES, blank=True)
     vata_score = models.IntegerField(default=0)
@@ -159,7 +161,8 @@ class DiseaseAnalysis(models.Model):
         ('chronic', 'Chronic'),
     ]
     
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='disease_analyses')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(UnifiedPatient, on_delete=models.CASCADE, related_name='disease_analyses')
     disease_name = models.CharField(max_length=255)
     icd_code = models.CharField(max_length=20, blank=True)  # International Classification of Diseases
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
@@ -208,7 +211,8 @@ class Consultation(models.Model):
         ('no_show', 'No Show'),
     ]
     
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='consultations')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(UnifiedPatient, on_delete=models.CASCADE, related_name='consultations')
     doctor = models.ForeignKey(UnifiedProfile, on_delete=models.CASCADE, related_name='consultations')
     consultation_type = models.CharField(max_length=20, choices=CONSULTATION_TYPE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')

@@ -2,29 +2,27 @@
 Serializers for patient management
 """
 from rest_framework import serializers
-from .models import Patient, PrakritiAnalysis, DiseaseAnalysis, Consultation
-from authentication.models import DoctorProfile
+from .models import PrakritiAnalysis, DiseaseAnalysis, Consultation
+from authentication.models import UnifiedPatient, UnifiedProfile
 
 class PatientSerializer(serializers.ModelSerializer):
     """Serializer for patient data"""
     user_name = serializers.CharField(source='user.full_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
-    assigned_doctor_name = serializers.CharField(source='assigned_doctor.display_name', read_only=True)
-    display_name = serializers.ReadOnlyField()
     
     class Meta:
-        model = Patient
+        model = UnifiedPatient
         fields = [
-            'id', 'patient_id', 'user_name', 'user_email', 'assigned_doctor_name',
-            'status', 'registration_date', 'last_consultation', 'next_appointment',
-            'is_active', 'notes', 'display_name'
+            'id', 'patient_id', 'user_name', 'user_email', 'status',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'patient_id', 'registration_date', 'display_name']
+        read_only_fields = ['id', 'patient_id', 'created_at', 'updated_at']
 
 class PrakritiAnalysisSerializer(serializers.ModelSerializer):
     """Serializer for Prakriti analysis"""
+    patient_id = serializers.CharField(source='patient.id', read_only=True)
     patient_name = serializers.CharField(source='patient.user.full_name', read_only=True)
-    analyzed_by_name = serializers.CharField(source='analyzed_by.display_name', read_only=True)
+    analyzed_by_name = serializers.CharField(source='analyzed_by.user.full_name', read_only=True)
     primary_dosha_display = serializers.ReadOnlyField(source='get_primary_dosha_display')
     total_score = serializers.ReadOnlyField()
     dosha_percentages = serializers.ReadOnlyField()
@@ -32,7 +30,7 @@ class PrakritiAnalysisSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrakritiAnalysis
         fields = [
-            'id', 'patient', 'patient_name', 'primary_dosha', 'primary_dosha_display',
+            'id', 'patient', 'patient_id', 'patient_name', 'primary_dosha', 'primary_dosha_display',
             'secondary_dosha', 'vata_score', 'pitta_score', 'kapha_score',
             'total_score', 'dosha_percentages', 'analysis_notes', 'recommendations',
             'status', 'analyzed_by', 'analyzed_by_name', 'analysis_date', 'updated_at'
@@ -41,15 +39,16 @@ class PrakritiAnalysisSerializer(serializers.ModelSerializer):
 
 class DiseaseAnalysisSerializer(serializers.ModelSerializer):
     """Serializer for disease analysis"""
+    patient_id = serializers.CharField(source='patient.id', read_only=True)
     patient_name = serializers.CharField(source='patient.user.full_name', read_only=True)
-    diagnosed_by_name = serializers.CharField(source='diagnosed_by.display_name', read_only=True)
+    diagnosed_by_name = serializers.CharField(source='diagnosed_by.user.full_name', read_only=True)
     severity_display = serializers.ReadOnlyField(source='get_severity_display')
     status_display = serializers.ReadOnlyField(source='get_status_display')
     
     class Meta:
         model = DiseaseAnalysis
         fields = [
-            'id', 'patient', 'patient_name', 'disease_name', 'icd_code', 'severity',
+            'id', 'patient', 'patient_id', 'patient_name', 'disease_name', 'icd_code', 'severity',
             'severity_display', 'status', 'status_display', 'symptoms', 'diagnosis_notes',
             'treatment_plan', 'medications', 'follow_up_required', 'follow_up_date',
             'diagnosed_by', 'diagnosed_by_name', 'diagnosis_date', 'updated_at', 'is_active'

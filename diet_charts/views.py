@@ -15,8 +15,8 @@ from .serializers import (
     MealPlanCreateSerializer,
     DietRecommendationSerializer
 )
-from patients.models import Patient
-from authentication.models import DoctorProfile
+from patients.models import Patient, PrakritiAnalysis
+from authentication.models import DoctorProfile, UnifiedProfile, UnifiedPatient
 
 class FoodItemListView(generics.ListAPIView):
     """List food items with search and filter capabilities"""
@@ -62,14 +62,16 @@ class DietChartListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         
         if user.role == 'doctor':
-            return DietChart.objects.filter(created_by__user=user)
+            doctor_profile = get_object_or_404(UnifiedProfile, user=user, profile_type='doctor')
+            return DietChart.objects.filter(created_by=doctor_profile)
         elif user.role == 'patient':
-            return DietChart.objects.filter(patient__user=user)
+            unified_patient = get_object_or_404(UnifiedPatient, user=user)
+            return DietChart.objects.filter(patient=unified_patient)
         return DietChart.objects.none()
     
     def perform_create(self, serializer):
         if self.request.user.role == 'doctor':
-            doctor_profile = get_object_or_404(DoctorProfile, user=self.request.user)
+            doctor_profile = get_object_or_404(UnifiedProfile, user=self.request.user, profile_type='doctor')
             serializer.save(created_by=doctor_profile)
 
 class DietChartDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -81,9 +83,11 @@ class DietChartDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         
         if user.role == 'doctor':
-            return DietChart.objects.filter(created_by__user=user)
+            doctor_profile = get_object_or_404(UnifiedProfile, user=user, profile_type='doctor')
+            return DietChart.objects.filter(created_by=doctor_profile)
         elif user.role == 'patient':
-            return DietChart.objects.filter(patient__user=user)
+            unified_patient = get_object_or_404(UnifiedPatient, user=user)
+            return DietChart.objects.filter(patient=unified_patient)
         return DietChart.objects.none()
 
 class MealPlanListCreateView(generics.ListCreateAPIView):
@@ -101,9 +105,11 @@ class MealPlanListCreateView(generics.ListCreateAPIView):
         
         # Check if user has access to this diet chart
         if user.role == 'doctor':
-            diet_chart = get_object_or_404(DietChart, id=diet_chart_id, created_by__user=user)
+            doctor_profile = get_object_or_404(UnifiedProfile, user=user, profile_type='doctor')
+            diet_chart = get_object_or_404(DietChart, id=diet_chart_id, created_by=doctor_profile)
         elif user.role == 'patient':
-            diet_chart = get_object_or_404(DietChart, id=diet_chart_id, patient__user=user)
+            unified_patient = get_object_or_404(UnifiedPatient, user=user)
+            diet_chart = get_object_or_404(DietChart, id=diet_chart_id, patient=unified_patient)
         else:
             return MealPlan.objects.none()
         
@@ -139,18 +145,19 @@ def generate_diet_chart(request):
     duration_days = request.data.get('duration_days', 30)
     
     try:
-        patient = get_object_or_404(Patient, id=patient_id)
-        doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
+        # Get unified patient
+        unified_patient = get_object_or_404(UnifiedPatient, id=patient_id)
+        doctor_profile = get_object_or_404(UnifiedProfile, user=request.user, profile_type='doctor')
         
         # Get patient's latest Prakriti analysis
-        latest_prakriti = patient.prakriti_analyses.order_by('-analysis_date').first()
+        latest_prakriti = PrakritiAnalysis.objects.filter(patient=unified_patient).order_by('-analysis_date').first()
         
         if not latest_prakriti:
             return Response({'error': 'Patient needs Prakriti analysis first'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Create diet chart
         diet_chart = DietChart.objects.create(
-            patient=patient,
+            patient=unified_patient,
             chart_name=chart_name,
             chart_type=chart_type,
             duration_days=duration_days,

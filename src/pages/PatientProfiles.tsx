@@ -1,8 +1,25 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, User, Calendar, Phone, MapPin, ArrowLeft, Loader2, AlertCircle, LogOut } from "lucide-react";
+import {
+  Search,
+  Plus,
+  User,
+  Calendar,
+  Phone,
+  MapPin,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  LogOut,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import PrakritiAnalysis from "@/components/analysis/PrakritiAnalysis";
@@ -11,7 +28,13 @@ import PatientSummary from "@/components/analysis/PatientSummary";
 import AddPatientForm from "@/components/forms/AddPatientForm";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiClient, Patient, PrakritiAnalysis as PrakritiAnalysisType, DiseaseAnalysis as DiseaseAnalysisType, PatientSummary as PatientSummaryType } from "@/services/api";
+import {
+  apiClient,
+  Patient,
+  PrakritiAnalysis as PrakritiAnalysisType,
+  DiseaseAnalysis as DiseaseAnalysisType,
+  PatientSummary as PatientSummaryType,
+} from "@/services/api";
 
 const PatientProfiles = () => {
   const navigate = useNavigate();
@@ -22,27 +45,32 @@ const PatientProfiles = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [prakritiData, setPrakritiData] = useState<PrakritiAnalysisType | null>(null);
-  const [diseaseData, setDiseaseData] = useState<DiseaseAnalysisType[]>([]);
-  const [patientSummary, setPatientSummary] = useState<PatientSummaryType | null>(null);
+  const [prakritiData, setPrakritiData] = useState<{
+    [key: string]: PrakritiAnalysisType;
+  }>({});
+  const [diseaseData, setDiseaseData] = useState<{
+    [key: string]: DiseaseAnalysisType[];
+  }>({});
+  const [patientSummary, setPatientSummary] =
+    useState<PatientSummaryType | null>(null);
 
   // Debug authentication
-  console.log('🔐 Auth Debug - user:', user);
-  console.log('🔐 Auth Debug - isAuthenticated:', isAuthenticated);
-  console.log('🔐 Auth Debug - authLoading:', authLoading);
+  console.log("🔐 Auth Debug - user:", user);
+  console.log("🔐 Auth Debug - isAuthenticated:", isAuthenticated);
+  console.log("🔐 Auth Debug - authLoading:", authLoading);
 
   // Load patients on component mount
   useEffect(() => {
-    console.log('🔐 Auth Debug - useEffect triggered:');
-    console.log('  - isAuthenticated:', isAuthenticated);
-    console.log('  - authLoading:', authLoading);
-    console.log('  - user:', user);
+    console.log("🔐 Auth Debug - useEffect triggered:");
+    console.log("  - isAuthenticated:", isAuthenticated);
+    console.log("  - authLoading:", authLoading);
+    console.log("  - user:", user);
 
     if (isAuthenticated && !authLoading) {
-      console.log('✅ Conditions met, loading patients...');
+      console.log("✅ Conditions met, loading patients...");
       loadPatients();
     } else {
-      console.log('❌ Conditions not met, not loading patients');
+      console.log("❌ Conditions not met, not loading patients");
     }
   }, [isAuthenticated, authLoading]);
 
@@ -50,93 +78,125 @@ const PatientProfiles = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔍 Loading patients...');
+      console.log("🔍 Loading patients...");
       const data = await apiClient.getPatients();
-      console.log('📊 Patients data received:', data);
-      console.log('📊 Data type:', typeof data);
-      console.log('📊 Data keys:', Object.keys(data));
-      console.log('📊 Results:', data.results);
-      console.log('📊 Count:', data.count);
+      console.log("📊 Patients data received:", data);
+      console.log("📊 Data type:", typeof data);
+      console.log("📊 Data keys:", Object.keys(data));
+      console.log("📊 Results:", data.results);
+      console.log("📊 Count:", data.count);
 
       // Handle paginated response
       const patientsList = data.results || data || [];
-      console.log('📋 Processed patients list:', patientsList);
-      console.log('📋 Patients list length:', Array.isArray(patientsList) ? patientsList.length : 0);
+      console.log("📋 Processed patients list:", patientsList);
+      console.log(
+        "📋 Patients list length:",
+        Array.isArray(patientsList) ? patientsList.length : 0
+      );
 
       if (Array.isArray(patientsList)) {
         setPatients(patientsList);
-        console.log('✅ Patients set successfully:', patientsList.length, 'patients');
+        console.log(
+          "✅ Patients set successfully:",
+          patientsList.length,
+          "patients"
+        );
+
+        // Load analysis data for all patients
+        for (const patient of patientsList) {
+          loadPrakritiAnalyses(patient.id);
+          loadDiseaseAnalyses(patient.id);
+        }
       } else {
-        console.error('❌ Patients list is not an array:', patientsList);
+        console.error("❌ Patients list is not an array:", patientsList);
         setPatients([]);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load patients');
-      console.error('❌ Error loading patients:', err);
+      setError(err.message || "Failed to load patients");
+      console.error("❌ Error loading patients:", err);
       setPatients([]); // Ensure patients is always an array
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPatientSummary = async (patientId: number) => {
+  const loadPatientSummary = async (patientId: string) => {
     try {
       setLoading(true);
       const summary = await apiClient.getPatientSummary(patientId);
       setPatientSummary(summary);
-      setPrakritiData(summary.prakriti_analysis || null);
-      setDiseaseData(Array.isArray(summary.active_diseases) ? summary.active_diseases : []);
+      // Update the per-patient data structure
+      if (summary.prakriti_analysis) {
+        setPrakritiData((prev) => ({
+          ...prev,
+          [patientId]: summary.prakriti_analysis,
+        }));
+      }
+      if (summary.active_diseases) {
+        setDiseaseData((prev) => ({
+          ...prev,
+          [patientId]: summary.active_diseases,
+        }));
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load patient summary');
-      console.error('Error loading patient summary:', err);
+      setError(err.message || "Failed to load patient summary");
+      console.error("Error loading patient summary:", err);
       setDiseaseData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPrakritiAnalyses = async (patientId: number) => {
+  const loadPrakritiAnalyses = async (patientId: string) => {
     try {
-      const data = await apiClient.getPrakritiAnalyses(patientId);
-      const analyses = data.results || [];
+      const analyses = await apiClient.getPrakritiAnalyses(patientId);
       if (Array.isArray(analyses) && analyses.length > 0) {
-        setPrakritiData(analyses[0]); // Get the latest analysis
+        setPrakritiData((prev) => ({
+          ...prev,
+          [patientId]: analyses[0], // Get the latest analysis
+        }));
       }
     } catch (err: any) {
-      console.error('Error loading Prakriti analyses:', err);
+      console.error("Error loading Prakriti analyses:", err);
     }
   };
 
-  const loadDiseaseAnalyses = async (patientId: number) => {
+  const loadDiseaseAnalyses = async (patientId: string) => {
     try {
-      const data = await apiClient.getDiseaseAnalyses(patientId);
-      const analyses = data.results || [];
-      setDiseaseData(Array.isArray(analyses) ? analyses : []);
+      const analyses = await apiClient.getDiseaseAnalyses(patientId);
+      setDiseaseData((prev) => ({
+        ...prev,
+        [patientId]: Array.isArray(analyses) ? analyses : [],
+      }));
     } catch (err: any) {
-      console.error('Error loading disease analyses:', err);
-      setDiseaseData([]);
+      console.error("Error loading disease analyses:", err);
+      setDiseaseData((prev) => ({
+        ...prev,
+        [patientId]: [],
+      }));
     }
   };
 
   const handleLogout = async () => {
     await logout();
-    navigate('/');
+    navigate("/");
   };
 
-  const filteredPatients = (patients || []).filter(patient =>
-    patient.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.patient_id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPatients = (patients || []).filter(
+    (patient) =>
+      patient.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.patient_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Debug filtered patients
-  console.log('🔍 Debug filteredPatients:');
-  console.log('  - Original patients:', patients);
-  console.log('  - Patients length:', patients?.length || 0);
-  console.log('  - Search term:', searchTerm);
-  console.log('  - Filtered patients:', filteredPatients);
-  console.log('  - Filtered length:', filteredPatients.length);
-  console.log('🔍 Debug - error:', error);
+  console.log("🔍 Debug filteredPatients:");
+  console.log("  - Original patients:", patients);
+  console.log("  - Patients length:", patients?.length || 0);
+  console.log("  - Search term:", searchTerm);
+  console.log("  - Filtered patients:", filteredPatients);
+  console.log("  - Filtered length:", filteredPatients.length);
+  console.log("🔍 Debug - error:", error);
 
   const handleAddPatient = async (newPatient: any) => {
     try {
@@ -144,15 +204,15 @@ const PatientProfiles = () => {
       // Create patient record
       const patientData = await apiClient.createPatient({
         user: newPatient.user_id,
-        notes: newPatient.notes || ''
+        notes: newPatient.notes || "",
       });
 
       // Refresh patients list
       await loadPatients();
       setCurrentView("list");
     } catch (err: any) {
-      setError(err.message || 'Failed to add patient');
-      console.error('Error adding patient:', err);
+      setError(err.message || "Failed to add patient");
+      console.error("Error adding patient:", err);
     } finally {
       setLoading(false);
     }
@@ -174,12 +234,12 @@ const PatientProfiles = () => {
         vata_score: scores.vata,
         pitta_score: scores.pitta,
         kapha_score: scores.kapha,
-        analysis_notes: `Prakriti analysis completed for ${selectedPatient.user_name}`
+        analysis_notes: `Prakriti analysis completed for ${selectedPatient.user_name}`,
       });
 
       // Update patient status
       await apiClient.updatePatient(selectedPatient.id, {
-        status: 'active'
+        status: "active",
       });
 
       // Refresh data
@@ -188,8 +248,8 @@ const PatientProfiles = () => {
 
       setCurrentView("list");
     } catch (err: any) {
-      setError(err.message || 'Failed to save Prakriti analysis');
-      console.error('Error saving Prakriti analysis:', err);
+      setError(err.message || "Failed to save Prakriti analysis");
+      console.error("Error saving Prakriti analysis:", err);
     } finally {
       setLoading(false);
     }
@@ -202,19 +262,19 @@ const PatientProfiles = () => {
       setLoading(true);
       // Create disease analysis
       await apiClient.createDiseaseAnalysis(selectedPatient.id, {
-        disease_name: analysisData.disease_name || 'General Health Assessment',
-        severity: analysisData.severity || 'mild',
-        symptoms: analysisData.symptoms || 'Various symptoms reported',
-        diagnosis_notes: analysisData.diagnosis_notes || '',
-        treatment_plan: analysisData.treatment_plan || ''
+        disease_name: analysisData.disease_name || "General Health Assessment",
+        severity: analysisData.severity || "mild",
+        symptoms: analysisData.symptoms || "Various symptoms reported",
+        diagnosis_notes: analysisData.diagnosis_notes || "",
+        treatment_plan: analysisData.treatment_plan || "",
       });
 
       // Refresh data
       await loadDiseaseAnalyses(selectedPatient.id);
       setCurrentView("list");
     } catch (err: any) {
-      setError(err.message || 'Failed to save disease analysis');
-      console.error('Error saving disease analysis:', err);
+      setError(err.message || "Failed to save disease analysis");
+      console.error("Error saving disease analysis:", err);
     } finally {
       setLoading(false);
     }
@@ -238,16 +298,37 @@ const PatientProfiles = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'suspended': return 'bg-yellow-100 text-yellow-800';
-      case 'discharged': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
+      case "suspended":
+        return "bg-yellow-100 text-yellow-800";
+      case "discharged":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Helper function to check if analyses are completed
+  const isPrakritiCompleted = (patient: Patient) => {
+    return (
+      prakritiData[patient.id] &&
+      prakritiData[patient.id].status === "completed"
+    );
+  };
+
+  const isDiseaseAnalysisCompleted = (patient: Patient) => {
+    return (
+      diseaseData[patient.id] &&
+      diseaseData[patient.id].length > 0 &&
+      diseaseData[patient.id].some((analysis) => analysis.status === "active")
+    );
   };
 
   const renderPatientCard = (patient: Patient) => (
@@ -259,7 +340,9 @@ const PatientProfiles = () => {
               <User className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">{patient.user_name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {patient.user_name}
+              </h3>
               <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
                 <span>{patient.user_email}</span>
                 <span>•</span>
@@ -268,29 +351,70 @@ const PatientProfiles = () => {
               <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-1" />
-                  <span>Registered: {formatDate(patient.registration_date)}</span>
+                  <span>
+                    Registered: {formatDate(patient.registration_date)}
+                  </span>
                 </div>
                 {patient.last_consultation && (
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
-                    <span>Last visit: {formatDate(patient.last_consultation)}</span>
+                    <span>
+                      Last visit: {formatDate(patient.last_consultation)}
+                    </span>
                   </div>
                 )}
               </div>
 
+              {/* Analysis Status Indicators */}
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      isPrakritiCompleted(patient)
+                        ? "bg-green-500"
+                        : "bg-gray-300"
+                    }`}
+                  ></div>
+                  <span className="text-sm font-medium">
+                    Prakriti Analysis:{" "}
+                    {isPrakritiCompleted(patient) ? "Completed" : "Pending"}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      isDiseaseAnalysisCompleted(patient)
+                        ? "bg-green-500"
+                        : "bg-gray-300"
+                    }`}
+                  ></div>
+                  <span className="text-sm font-medium">
+                    Disease Analysis:{" "}
+                    {isDiseaseAnalysisCompleted(patient)
+                      ? "Completed"
+                      : "Pending"}
+                  </span>
+                </div>
+              </div>
+
               {/* Prakriti Constitution */}
-              {prakritiData && prakritiData.patient === patient.id && (
+              {prakritiData[patient.id] && (
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Prakriti Constitution:</h4>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Prakriti Constitution:
+                  </h4>
                   <div className="flex space-x-2">
                     <Badge variant="outline" className="text-xs">
-                      Vata: {prakritiData.dosha_percentages.vata}%
+                      Vata:{" "}
+                      {prakritiData[patient.id].dosha_percentages?.vata || 0}%
                     </Badge>
                     <Badge variant="outline" className="text-xs">
-                      Pitta: {prakritiData.dosha_percentages.pitta}%
+                      Pitta:{" "}
+                      {prakritiData[patient.id].dosha_percentages?.pitta || 0}%
                     </Badge>
                     <Badge variant="outline" className="text-xs">
-                      Kapha: {prakritiData.dosha_percentages.kapha}%
+                      Kapha:{" "}
+                      {prakritiData[patient.id].dosha_percentages?.kapha || 0}%
                     </Badge>
                   </div>
                 </div>
@@ -307,20 +431,34 @@ const PatientProfiles = () => {
 
         <div className="flex space-x-2 mt-4">
           <Button
-            variant="outline"
+            variant={isPrakritiCompleted(patient) ? "default" : "outline"}
             size="sm"
             onClick={() => handlePrakritiAnalysis(patient)}
-            className="flex-1"
+            className={`flex-1 ${
+              isPrakritiCompleted(patient)
+                ? "bg-green-600 hover:bg-green-700"
+                : ""
+            }`}
           >
-            Prakriti Done
+            {isPrakritiCompleted(patient)
+              ? "✓ Prakriti Done"
+              : "Prakriti Analysis"}
           </Button>
           <Button
-            variant="outline"
+            variant={
+              isDiseaseAnalysisCompleted(patient) ? "default" : "outline"
+            }
             size="sm"
             onClick={() => handleDiseaseAnalysis(patient)}
-            className="flex-1"
+            className={`flex-1 ${
+              isDiseaseAnalysisCompleted(patient)
+                ? "bg-green-600 hover:bg-green-700"
+                : ""
+            }`}
           >
-            Disease Analysis
+            {isDiseaseAnalysisCompleted(patient)
+              ? "✓ Disease Done"
+              : "Disease Analysis"}
           </Button>
           <Button
             size="sm"
@@ -433,11 +571,13 @@ const PatientProfiles = () => {
         <div className="container mx-auto px-6 py-8">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-              <p className="text-muted-foreground mb-4">Please log in to view patient profiles.</p>
-              <Button onClick={() => navigate('/')}>
-                Go to Login
-              </Button>
+              <h2 className="text-2xl font-bold mb-4">
+                Authentication Required
+              </h2>
+              <p className="text-muted-foreground mb-4">
+                Please log in to view patient profiles.
+              </p>
+              <Button onClick={() => navigate("/")}>Go to Login</Button>
             </div>
           </div>
         </div>
@@ -454,7 +594,7 @@ const PatientProfiles = () => {
             <div>
               <Button
                 variant="ghost"
-                onClick={() => navigate('/doctor-dashboard')}
+                onClick={() => navigate("/doctor-dashboard")}
                 className="mb-2"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -463,7 +603,9 @@ const PatientProfiles = () => {
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 Patient Profiles
               </h1>
-              <p className="text-sm text-muted-foreground">Manage patient information and conduct assessments</p>
+              <p className="text-sm text-muted-foreground">
+                Manage patient information and conduct assessments
+              </p>
             </div>
             <div className="flex items-center space-x-3">
               <Button onClick={() => setCurrentView("add")} disabled={loading}>
@@ -519,9 +661,13 @@ const PatientProfiles = () => {
               <Card className="text-center py-12">
                 <CardContent>
                   <User className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No patients found</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No patients found
+                  </h3>
                   <p className="text-muted-foreground mb-4">
-                    {searchTerm ? "Try adjusting your search term" : "Get started by adding your first patient"}
+                    {searchTerm
+                      ? "Try adjusting your search term"
+                      : "Get started by adding your first patient"}
                   </p>
                   <Button onClick={() => setCurrentView("add")}>
                     <Plus className="w-4 h-4 mr-2" />

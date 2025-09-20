@@ -1,13 +1,41 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, ArrowLeft, Wand2, Download, Edit, RefreshCw, User, Save } from "lucide-react";
+import {
+  Search,
+  ArrowLeft,
+  Wand2,
+  Download,
+  Edit,
+  RefreshCw,
+  User,
+  Save,
+} from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,11 +59,11 @@ const mockPatients = [
     targetCalories: 1800,
     mealDistribution: {
       breakfast: 360, // 20%
-      brunch: 270,    // 15%
-      lunch: 540,     // 30%
-      snack: 180,     // 10%
-      dinner: 450     // 25%
-    }
+      brunch: 270, // 15%
+      lunch: 540, // 30%
+      snack: 180, // 10%
+      dinner: 450, // 25%
+    },
   },
   {
     id: 2,
@@ -50,81 +78,260 @@ const mockPatients = [
       brunch: 330,
       lunch: 660,
       snack: 220,
-      dinner: 550
-    }
-  }
+      dinner: 550,
+    },
+  },
 ];
 
 // Enhanced 7-day diet chart with food images and more variety
 const mockDietChart = {
   day1: {
-    breakfast: { name: "Warm Oatmeal with Ghee", calories: 360, suitable: true, image: warmOatmealImage },
-    brunch: { name: "Coconut Water & Dates", calories: 270, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Kitchari with Vegetables", calories: 540, suitable: true, image: kitchariImage },
-    snack: { name: "Herbal Tea & Almonds", calories: 180, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Light Dal & Rice", calories: 450, suitable: true, image: dalRiceImage }
+    breakfast: {
+      name: "Warm Oatmeal with Ghee",
+      calories: 360,
+      suitable: true,
+      image: warmOatmealImage,
+    },
+    brunch: {
+      name: "Coconut Water & Dates",
+      calories: 270,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Kitchari with Vegetables",
+      calories: 540,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Herbal Tea & Almonds",
+      calories: 180,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Light Dal & Rice",
+      calories: 450,
+      suitable: true,
+      image: dalRiceImage,
+    },
   },
   day2: {
-    breakfast: { name: "Almond Milk Porridge", calories: 350, suitable: true, image: almondPorridgeImage },
-    brunch: { name: "Fresh Fruit Bowl", calories: 280, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Quinoa & Vegetable Curry", calories: 550, suitable: true, image: kitchariImage },
-    snack: { name: "Mint Tea & Crackers", calories: 170, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Steamed Vegetables & Roti", calories: 460, suitable: true, image: dalRiceImage }
+    breakfast: {
+      name: "Almond Milk Porridge",
+      calories: 350,
+      suitable: true,
+      image: almondPorridgeImage,
+    },
+    brunch: {
+      name: "Fresh Fruit Bowl",
+      calories: 280,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Quinoa & Vegetable Curry",
+      calories: 550,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Mint Tea & Crackers",
+      calories: 170,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Steamed Vegetables & Roti",
+      calories: 460,
+      suitable: true,
+      image: dalRiceImage,
+    },
   },
   day3: {
-    breakfast: { name: "Coconut Rice Porridge", calories: 340, suitable: true, image: warmOatmealImage },
-    brunch: { name: "Green Smoothie", calories: 260, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Mixed Dal with Brown Rice", calories: 570, suitable: true, image: kitchariImage },
-    snack: { name: "Turmeric Latte & Nuts", calories: 190, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Vegetable Soup & Bread", calories: 440, suitable: true, image: dalRiceImage }
+    breakfast: {
+      name: "Coconut Rice Porridge",
+      calories: 340,
+      suitable: true,
+      image: warmOatmealImage,
+    },
+    brunch: {
+      name: "Green Smoothie",
+      calories: 260,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Mixed Dal with Brown Rice",
+      calories: 570,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Turmeric Latte & Nuts",
+      calories: 190,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Vegetable Soup & Bread",
+      calories: 440,
+      suitable: true,
+      image: dalRiceImage,
+    },
   },
   day4: {
-    breakfast: { name: "Spiced Quinoa Bowl", calories: 380, suitable: true, image: almondPorridgeImage },
-    brunch: { name: "Buttermilk & Cucumber", calories: 250, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Chickpea Curry & Rice", calories: 560, suitable: true, image: kitchariImage },
-    snack: { name: "Ginger Tea & Biscuits", calories: 200, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Lentil Soup & Salad", calories: 420, suitable: true, image: dalRiceImage }
+    breakfast: {
+      name: "Spiced Quinoa Bowl",
+      calories: 380,
+      suitable: true,
+      image: almondPorridgeImage,
+    },
+    brunch: {
+      name: "Buttermilk & Cucumber",
+      calories: 250,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Chickpea Curry & Rice",
+      calories: 560,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Ginger Tea & Biscuits",
+      calories: 200,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Lentil Soup & Salad",
+      calories: 420,
+      suitable: true,
+      image: dalRiceImage,
+    },
   },
   day5: {
-    breakfast: { name: "Millet Porridge with Nuts", calories: 370, suitable: true, image: warmOatmealImage },
-    brunch: { name: "Pomegranate Juice", calories: 240, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Vegetable Biryani", calories: 580, suitable: true, image: kitchariImage },
-    snack: { name: "Cardamom Tea & Dates", calories: 160, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Moong Dal & Chapati", calories: 470, suitable: true, image: dalRiceImage }
+    breakfast: {
+      name: "Millet Porridge with Nuts",
+      calories: 370,
+      suitable: true,
+      image: warmOatmealImage,
+    },
+    brunch: {
+      name: "Pomegranate Juice",
+      calories: 240,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Vegetable Biryani",
+      calories: 580,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Cardamom Tea & Dates",
+      calories: 160,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Moong Dal & Chapati",
+      calories: 470,
+      suitable: true,
+      image: dalRiceImage,
+    },
   },
   day6: {
-    breakfast: { name: "Barley Porridge", calories: 320, suitable: true, image: almondPorridgeImage },
-    brunch: { name: "Lassi with Honey", calories: 290, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Sambar & Rice", calories: 530, suitable: true, image: kitchariImage },
-    snack: { name: "Fennel Tea & Trail Mix", calories: 210, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Vegetable Khichdi", calories: 450, suitable: true, image: dalRiceImage }
+    breakfast: {
+      name: "Barley Porridge",
+      calories: 320,
+      suitable: true,
+      image: almondPorridgeImage,
+    },
+    brunch: {
+      name: "Lassi with Honey",
+      calories: 290,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Sambar & Rice",
+      calories: 530,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Fennel Tea & Trail Mix",
+      calories: 210,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Vegetable Khichdi",
+      calories: 450,
+      suitable: true,
+      image: dalRiceImage,
+    },
   },
   day7: {
-    breakfast: { name: "Amaranth Porridge", calories: 360, suitable: true, image: warmOatmealImage },
-    brunch: { name: "Rose Water & Almonds", calories: 260, suitable: true, image: coconutWaterImage },
-    lunch: { name: "Rajma & Brown Rice", calories: 590, suitable: true, image: kitchariImage },
-    snack: { name: "Tulsi Tea & Roasted Seeds", calories: 180, suitable: true, image: herbalTeaImage },
-    dinner: { name: "Clear Soup & Steamed Rice", calories: 410, suitable: true, image: dalRiceImage }
-  }
+    breakfast: {
+      name: "Amaranth Porridge",
+      calories: 360,
+      suitable: true,
+      image: warmOatmealImage,
+    },
+    brunch: {
+      name: "Rose Water & Almonds",
+      calories: 260,
+      suitable: true,
+      image: coconutWaterImage,
+    },
+    lunch: {
+      name: "Rajma & Brown Rice",
+      calories: 590,
+      suitable: true,
+      image: kitchariImage,
+    },
+    snack: {
+      name: "Tulsi Tea & Roasted Seeds",
+      calories: 180,
+      suitable: true,
+      image: herbalTeaImage,
+    },
+    dinner: {
+      name: "Clear Soup & Steamed Rice",
+      calories: 410,
+      suitable: true,
+      image: dalRiceImage,
+    },
+  },
 };
 
 const GenerateDietChart = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  
+
   // Check if this is a patient view only mode
   const { patient: patientFromState, viewOnly } = location.state || {};
-  
-  const [selectedPatient, setSelectedPatient] = useState(patientFromState || null);
+
+  const [selectedPatient, setSelectedPatient] = useState(
+    patientFromState || null
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [currentView, setCurrentView] = useState(viewOnly ? "final" : "select"); // select, generating, edit, final
-  const [generatedChart, setGeneratedChart] = useState(viewOnly ? mockDietChart : null);
+  const [generatedChart, setGeneratedChart] = useState(
+    viewOnly ? mockDietChart : null
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingMeal, setEditingMeal] = useState(null);
   const [customMeal, setCustomMeal] = useState("");
 
-  const filteredPatients = mockPatients.filter(patient =>
+  const filteredPatients = mockPatients.filter((patient) =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -133,13 +340,29 @@ const GenerateDietChart = () => {
     setCurrentView("generating");
   };
 
+  // Check if both analyses are completed
+  const isPrakritiCompleted = location.state?.prakritiAnalysis;
+  const isDiseaseAnalysisCompleted =
+    location.state?.diseases && location.state.diseases.length > 0;
+  const canGenerateChart = isPrakritiCompleted && isDiseaseAnalysisCompleted;
+
   const handleGenerateChart = async () => {
+    if (!canGenerateChart) {
+      toast({
+        title: "Analysis Required",
+        description:
+          "Both Prakriti Analysis and Disease Analysis must be completed before generating a diet chart.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     toast({
       title: "Generating Diet Chart",
       description: "AI is creating a personalized 7-day meal plan...",
     });
-    
+
     // Simulate AI processing
     setTimeout(() => {
       setGeneratedChart(mockDietChart);
@@ -157,7 +380,7 @@ const GenerateDietChart = () => {
       title: "Regenerating Diet Chart",
       description: "Creating a new meal plan with different options...",
     });
-    
+
     setTimeout(() => {
       // Shuffle some meals for variation
       const newChart = { ...mockDietChart };
@@ -175,17 +398,20 @@ const GenerateDietChart = () => {
       title: "Exporting PDF",
       description: "Generating diet chart PDF for download...",
     });
-    
+
     setTimeout(() => {
       toast({
         title: "PDF Ready!",
         description: `Diet chart for ${selectedPatient?.name} exported successfully.`,
       });
-      
+
       // Create a mock PDF download
-      const element = document.createElement('a');
-      element.setAttribute('download', `${selectedPatient?.name.replace(' ', '_')}_diet_chart.pdf`);
-      element.style.display = 'none';
+      const element = document.createElement("a");
+      element.setAttribute(
+        "download",
+        `${selectedPatient?.name.replace(" ", "_")}_diet_chart.pdf`
+      );
+      element.style.display = "none";
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
@@ -202,12 +428,12 @@ const GenerateDietChart = () => {
       const updatedChart = { ...generatedChart };
       updatedChart[editingMeal.day][editingMeal.meal] = {
         ...editingMeal.currentMeal,
-        name: customMeal.trim()
+        name: customMeal.trim(),
       };
       setGeneratedChart(updatedChart);
       setEditingMeal(null);
       setCustomMeal("");
-      
+
       toast({
         title: "Meal Updated",
         description: "Diet chart has been modified successfully.",
@@ -216,8 +442,11 @@ const GenerateDietChart = () => {
   };
 
   const renderPatientCard = (patient) => (
-    <Card key={patient.id} className="hover:shadow-warm transition-all duration-300 cursor-pointer"
-          onClick={() => handleSelectPatient(patient)}>
+    <Card
+      key={patient.id}
+      className="hover:shadow-warm transition-all duration-300 cursor-pointer"
+      onClick={() => handleSelectPatient(patient)}
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -239,9 +468,7 @@ const GenerateDietChart = () => {
               </div>
             </div>
           </div>
-          <Button>
-            Select Patient
-          </Button>
+          <Button>Select Patient</Button>
         </div>
       </CardContent>
     </Card>
@@ -250,17 +477,27 @@ const GenerateDietChart = () => {
   const renderDayChart = (dayData: any, dayName: string) => (
     <Card key={dayName}>
       <CardHeader>
-        <CardTitle className="text-lg capitalize">{dayName.replace('day', 'Day ')}</CardTitle>
+        <CardTitle className="text-lg capitalize">
+          {dayName.replace("day", "Day ")}
+        </CardTitle>
         <CardDescription>
-          Total Calories: {(Object.values(dayData) as any[]).reduce((sum: number, meal: any) => sum + (meal?.calories || 0), 0)} cal
+          Total Calories:{" "}
+          {(Object.values(dayData) as any[]).reduce(
+            (sum: number, meal: any) => sum + (meal?.calories || 0),
+            0
+          )}{" "}
+          cal
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {Object.entries(dayData).map(([meal, food]: [string, any]) => (
-          <div key={meal} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border">
+          <div
+            key={meal}
+            className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border"
+          >
             <div className="flex items-center space-x-4">
-              <img 
-                src={food.image} 
+              <img
+                src={food.image}
                 alt={food.name}
                 className="w-16 h-16 rounded-lg object-cover"
               />
@@ -273,9 +510,9 @@ const GenerateDietChart = () => {
               <Badge variant={food.suitable ? "default" : "destructive"}>
                 {food.calories} cal
               </Badge>
-              <Button 
-                size="sm" 
-                variant="ghost" 
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => handleEditMeal(dayName, meal, food)}
               >
                 <Edit className="w-3 h-3" />
@@ -291,8 +528,8 @@ const GenerateDietChart = () => {
     return (
       <div className="min-h-screen bg-gradient-earth">
         <div className="container mx-auto px-6 py-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => setCurrentView("select")}
             className="mb-6"
           >
@@ -305,8 +542,10 @@ const GenerateDietChart = () => {
               <div className="w-16 h-16 mx-auto rounded-full bg-gradient-healing flex items-center justify-center mb-6">
                 <User className="w-8 h-8 text-white" />
               </div>
-              
-              <h2 className="text-2xl font-bold mb-2">{selectedPatient?.name}</h2>
+
+              <h2 className="text-2xl font-bold mb-2">
+                {selectedPatient?.name}
+              </h2>
               <div className="flex justify-center space-x-4 mb-6">
                 <Badge variant="secondary">
                   Dominant: {selectedPatient?.dominantDosha}
@@ -316,29 +555,80 @@ const GenerateDietChart = () => {
                 </Badge>
               </div>
 
+              {/* Analysis Status */}
+              <div className="bg-muted/30 rounded-lg p-6 mb-6">
+                <h3 className="font-medium mb-4">Analysis Status</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-4 h-4 rounded-full ${
+                        isPrakritiCompleted ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-sm font-medium">
+                      Prakriti Analysis:{" "}
+                      {isPrakritiCompleted ? "Completed" : "Pending"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-4 h-4 rounded-full ${
+                        isDiseaseAnalysisCompleted
+                          ? "bg-green-500"
+                          : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-sm font-medium">
+                      Disease Analysis:{" "}
+                      {isDiseaseAnalysisCompleted ? "Completed" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+                {!canGenerateChart && (
+                  <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <strong>Note:</strong> Both analyses must be completed
+                      before generating a diet chart.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="bg-muted/30 rounded-lg p-6 mb-6">
                 <h3 className="font-medium mb-4">Daily Calorie Distribution</h3>
                 <div className="grid grid-cols-5 gap-4 text-sm">
-                  {selectedPatient?.mealDistribution && Object.entries(selectedPatient.mealDistribution).map(([meal, calories]: [string, any]) => (
-                    <div key={meal} className="text-center">
-                      <p className="font-medium capitalize">{meal}</p>
-                      <p className="text-muted-foreground">{calories as number} cal</p>
-                    </div>
-                  ))}
+                  {selectedPatient?.mealDistribution &&
+                    Object.entries(selectedPatient.mealDistribution).map(
+                      ([meal, calories]: [string, any]) => (
+                        <div key={meal} className="text-center">
+                          <p className="font-medium capitalize">{meal}</p>
+                          <p className="text-muted-foreground">
+                            {calories as number} cal
+                          </p>
+                        </div>
+                      )
+                    )}
                 </div>
               </div>
 
               <div className="space-y-4">
-                <Button 
+                <Button
                   onClick={handleGenerateChart}
-                  disabled={isGenerating}
-                  className="w-full"
+                  disabled={isGenerating || !canGenerateChart}
+                  className={`w-full ${
+                    !canGenerateChart ? "bg-gray-300 cursor-not-allowed" : ""
+                  }`}
                   size="lg"
                 >
                   {isGenerating ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                       Generating 7-Day AI Diet Chart...
+                    </>
+                  ) : !canGenerateChart ? (
+                    <>
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      Complete Both Analyses First
                     </>
                   ) : (
                     <>
@@ -347,14 +637,18 @@ const GenerateDietChart = () => {
                     </>
                   )}
                 </Button>
-                
+
                 {isGenerating && (
                   <div className="space-y-2">
                     <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-gradient-primary h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                      <div
+                        className="bg-gradient-primary h-2 rounded-full animate-pulse"
+                        style={{ width: "60%" }}
+                      ></div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Analyzing patient profile and generating personalized 7-day diet plan with Ayurvedic principles...
+                      Analyzing patient profile and generating personalized
+                      7-day diet plan with Ayurvedic principles...
                     </p>
                   </div>
                 )}
@@ -374,8 +668,8 @@ const GenerateDietChart = () => {
           <div className="container mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => setCurrentView("select")}
                   className="mb-2"
                 >
@@ -398,7 +692,7 @@ const GenerateDietChart = () => {
                 )}
                 <Button onClick={handleExportPDF}>
                   <Download className="w-4 h-4 mr-2" />
-                  {viewOnly ? 'Download PDF' : 'Export PDF'}
+                  {viewOnly ? "Download PDF" : "Export PDF"}
                 </Button>
               </div>
             </div>
@@ -408,13 +702,13 @@ const GenerateDietChart = () => {
         <main className="container mx-auto px-6 py-8">
           <Tabs defaultValue="day1" className="space-y-6">
             <TabsList className="grid grid-cols-7 w-full">
-              {Array.from({length: 7}, (_, i) => (
-                <TabsTrigger key={`day${i+1}`} value={`day${i+1}`}>
-                  Day {i+1}
+              {Array.from({ length: 7 }, (_, i) => (
+                <TabsTrigger key={`day${i + 1}`} value={`day${i + 1}`}>
+                  Day {i + 1}
                 </TabsTrigger>
               ))}
             </TabsList>
-            
+
             {Object.entries(mockDietChart).map(([day, dayData]) => (
               <TabsContent key={day} value={day} className="space-y-4">
                 {renderDayChart(dayData, day)}
@@ -423,12 +717,16 @@ const GenerateDietChart = () => {
           </Tabs>
 
           {/* Manual Modification Dialog */}
-          <Dialog open={!!editingMeal} onOpenChange={() => setEditingMeal(null)}>
+          <Dialog
+            open={!!editingMeal}
+            onOpenChange={() => setEditingMeal(null)}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Edit Meal</DialogTitle>
                 <DialogDescription>
-                  Manually modify the selected meal for {selectedPatient?.name}'s diet plan
+                  Manually modify the selected meal for {selectedPatient?.name}
+                  's diet plan
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -441,7 +739,10 @@ const GenerateDietChart = () => {
                   />
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setEditingMeal(null)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingMeal(null)}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleSaveMealEdit}>
@@ -464,19 +765,27 @@ const GenerateDietChart = () => {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate(viewOnly ? '/patient-dashboard' : '/doctor-dashboard')}
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  navigate(
+                    viewOnly ? "/patient-dashboard" : "/doctor-dashboard"
+                  )
+                }
                 className="mb-2"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                {viewOnly ? 'Back to Dashboard' : 'Back to Dashboard'}
+                {viewOnly ? "Back to Dashboard" : "Back to Dashboard"}
               </Button>
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                {viewOnly ? `Diet Chart - ${selectedPatient?.name}` : 'Generate 7-Day Diet Chart'}
+                {viewOnly
+                  ? `Diet Chart - ${selectedPatient?.name}`
+                  : "Generate 7-Day Diet Chart"}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {viewOnly ? 'Your personalized 7-day Ayurvedic meal plan' : 'AI-powered automatic 7-day diet chart generation based on patient analysis'}
+                {viewOnly
+                  ? "Your personalized 7-day Ayurvedic meal plan"
+                  : "AI-powered automatic 7-day diet chart generation based on patient analysis"}
               </p>
             </div>
           </div>
@@ -500,17 +809,23 @@ const GenerateDietChart = () => {
 
         {/* Patient Selection */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold mb-4">Select Patient for 7-Day Diet Chart Generation</h2>
-          
+          <h2 className="text-xl font-semibold mb-4">
+            Select Patient for 7-Day Diet Chart Generation
+          </h2>
+
           {filteredPatients.map(renderPatientCard)}
-          
+
           {filteredPatients.length === 0 && (
             <Card className="text-center py-12">
               <CardContent>
                 <User className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No patients found</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  No patients found
+                </h3>
                 <p className="text-muted-foreground">
-                  {searchTerm ? "Try adjusting your search term" : "No patients available for diet chart generation"}
+                  {searchTerm
+                    ? "Try adjusting your search term"
+                    : "No patients available for diet chart generation"}
                 </p>
               </CardContent>
             </Card>

@@ -206,9 +206,32 @@ def user_logout(request):
 @permission_classes([permissions.IsAuthenticated])
 def user_profile(request):
     """Get user profile"""
-    return Response({
-        'user': UserSerializer(request.user).data
-    }, status=status.HTTP_200_OK)
+    user = request.user
+    profile_data = {
+        'user': UserSerializer(user).data
+    }
+    
+    # Add role-specific profile data
+    if user.role == 'patient':
+        unified_patient = user.unified_patient.first()
+        if unified_patient:
+            profile_data['patient_data'] = {
+                'patient_id': unified_patient.patient_id,
+                'age': unified_patient.age,
+                'bmi': unified_patient.bmi,
+                'medical_data': unified_patient.medical_data
+            }
+        
+        profile = user.unified_profile.filter(profile_type='patient').first()
+        if profile:
+            profile_data['profile_data'] = profile.profile_data
+    
+    elif user.role == 'doctor':
+        profile = user.unified_profile.filter(profile_type='doctor').first()
+        if profile:
+            profile_data['doctor_data'] = profile.profile_data
+    
+    return Response(profile_data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
