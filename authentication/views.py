@@ -15,6 +15,7 @@ from .serializers import (
     UserLoginSerializer,
     UserSerializer
 )
+from .models import UnifiedProfile, UnifiedPatient
 from .supabase_service import supabase_service
 
 @api_view(['POST'])
@@ -31,47 +32,75 @@ def register_patient(request):
             if user_serializer.is_valid():
                 user = user_serializer.save()
                 
-                # Create patient profile
-                patient_data = {
-                    'age': request.data.get('age'),
+                # Create unified patient profile
+                patient_profile_data = {
+                    'date_of_birth': request.data.get('date_of_birth'),
                     'gender': request.data.get('gender'),
+                    'blood_type': request.data.get('blood_type'),
+                    'height': request.data.get('height'),
+                    'weight': request.data.get('weight'),
                     'location': request.data.get('location', ''),
                     'phone_number': request.data.get('phone_number', ''),
+                    'emergency_contact_name': request.data.get('emergency_contact_name', ''),
+                    'emergency_contact_phone': request.data.get('emergency_contact_phone', ''),
+                    'emergency_contact_relation': request.data.get('emergency_contact_relation', ''),
+                    'medical_history': request.data.get('medical_history', ''),
+                    'allergies': request.data.get('allergies', ''),
+                    'current_medications': request.data.get('current_medications', ''),
+                    'insurance_provider': request.data.get('insurance_provider', ''),
+                    'insurance_number': request.data.get('insurance_number', ''),
                 }
                 
-                patient_serializer = PatientProfileSerializer(data=patient_data)
-                if patient_serializer.is_valid():
-                    patient_profile = patient_serializer.save(user=user)
-                    
-                    # Sync user to Supabase with debugging
-                    try:
-                        supabase_user_id = supabase_service.sync_user_to_supabase(user)
-                        if supabase_user_id:
-                            print(f"✅ User synced to Supabase with ID: {supabase_user_id}")
-                            
-                            # Sync patient profile
-                            supabase_profile_id = supabase_service.sync_patient_profile(patient_profile)
-                            if supabase_profile_id:
-                                print(f"✅ Patient profile synced to Supabase with ID: {supabase_profile_id}")
-                            else:
-                                print("⚠️ Patient profile sync to Supabase failed")
+                # Create unified profile
+                unified_profile = UnifiedProfile.objects.create(
+                    user=user,
+                    profile_type='patient',
+                    profile_data=patient_profile_data
+                )
+                
+                # Create unified patient record
+                import uuid
+                patient_id = f"PAT-{str(uuid.uuid4())[:8].upper()}"
+                unified_patient = UnifiedPatient.objects.create(
+                    user=user,
+                    patient_id=patient_id,
+                    medical_data=patient_profile_data
+                )
+                
+                # Sync user to Supabase with debugging
+                try:
+                    supabase_user_id = supabase_service.sync_user_to_supabase(user)
+                    if supabase_user_id:
+                        print(f"✅ User synced to Supabase with ID: {supabase_user_id}")
+                        
+                        # Sync patient profile
+                        supabase_profile_id = supabase_service.sync_patient_profile(unified_profile)
+                        if supabase_profile_id:
+                            print(f"✅ Patient profile synced to Supabase with ID: {supabase_profile_id}")
                         else:
-                            print("⚠️ User sync to Supabase failed")
-                    except Exception as e:
-                        print(f"❌ Supabase sync error: {e}")
-                        # Continue with Django registration even if Supabase fails
-                    
-                    # Create token
-                    token, created = Token.objects.get_or_create(user=user)
-                    
-                    return Response({
-                        'message': 'Patient registered successfully',
-                        'user': UserSerializer(user).data,
-                        'token': token.key
-                    }, status=status.HTTP_201_CREATED)
-                else:
-                    user.delete() # Rollback user creation if profile fails
-                    return Response(patient_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                            print("⚠️ Patient profile sync to Supabase failed")
+                        
+                        # Sync patient record
+                        supabase_patient_id = supabase_service.sync_patient(unified_patient)
+                        if supabase_patient_id:
+                            print(f"✅ Patient record synced to Supabase with ID: {supabase_patient_id}")
+                        else:
+                            print("⚠️ Patient record sync to Supabase failed")
+                    else:
+                        print("⚠️ User sync to Supabase failed")
+                except Exception as e:
+                    print(f"❌ Supabase sync error: {e}")
+                    # Continue with Django registration even if Supabase fails
+                
+                # Create token
+                token, created = Token.objects.get_or_create(user=user)
+                
+                return Response({
+                    'message': 'Patient registered successfully',
+                    'user': UserSerializer(user).data,
+                    'patient_id': patient_id,
+                    'token': token.key
+                }, status=status.HTTP_201_CREATED)
             else:
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -92,49 +121,52 @@ def register_doctor(request):
             if user_serializer.is_valid():
                 user = user_serializer.save()
                 
-                # Create doctor profile
-                doctor_data = {
+                # Create unified doctor profile
+                doctor_profile_data = {
                     'qualification': request.data.get('qualification'),
                     'experience_years': request.data.get('experience_years'),
                     'license_number': request.data.get('license_number'),
                     'specialization': request.data.get('specialization'),
                     'bio': request.data.get('bio', ''),
                     'consultation_fee': request.data.get('consultation_fee', 0.00),
+                    'languages': request.data.get('languages', []),
+                    'consultation_hours': request.data.get('consultation_hours', {}),
                 }
                 
-                doctor_serializer = DoctorProfileSerializer(data=doctor_data)
-                if doctor_serializer.is_valid():
-                    doctor_profile = doctor_serializer.save(user=user)
-                    
-                    # Sync user and profile to Supabase with debugging
-                    try:
-                        supabase_user_id = supabase_service.sync_user_to_supabase(user)
-                        if supabase_user_id:
-                            print(f"✅ User synced to Supabase with ID: {supabase_user_id}")
-                            
-                            # Sync doctor profile
-                            supabase_profile_id = supabase_service.sync_doctor_profile(doctor_profile)
-                            if supabase_profile_id:
-                                print(f"✅ Doctor profile synced to Supabase with ID: {supabase_profile_id}")
-                            else:
-                                print("⚠️ Doctor profile sync to Supabase failed")
+                # Create unified profile
+                unified_profile = UnifiedProfile.objects.create(
+                    user=user,
+                    profile_type='doctor',
+                    profile_data=doctor_profile_data
+                )
+                
+                # Sync user and profile to Supabase with debugging
+                try:
+                    supabase_user_id = supabase_service.sync_user_to_supabase(user)
+                    if supabase_user_id:
+                        print(f"✅ User synced to Supabase with ID: {supabase_user_id}")
+                        
+                        # Sync doctor profile
+                        supabase_profile_id = supabase_service.sync_doctor_profile(unified_profile)
+                        if supabase_profile_id:
+                            print(f"✅ Doctor profile synced to Supabase with ID: {supabase_profile_id}")
                         else:
-                            print("⚠️ User sync to Supabase failed")
-                    except Exception as e:
-                        print(f"❌ Supabase sync error: {e}")
-                        # Continue with Django registration even if Supabase fails
-                    
-                    # Create token
-                    token, created = Token.objects.get_or_create(user=user)
-                    
-                    return Response({
-                        'message': 'Doctor registered successfully',
-                        'user': UserSerializer(user).data,
-                        'token': token.key
-                    }, status=status.HTTP_201_CREATED)
-                else:
-                    user.delete() # Rollback user creation if profile fails
-                    return Response(doctor_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                            print("⚠️ Doctor profile sync to Supabase failed")
+                    else:
+                        print("⚠️ User sync to Supabase failed")
+                except Exception as e:
+                    print(f"❌ Supabase sync error: {e}")
+                    # Continue with Django registration even if Supabase fails
+                
+                # Create token
+                token, created = Token.objects.get_or_create(user=user)
+                
+                return Response({
+                    'message': 'Doctor registered successfully',
+                    'user': UserSerializer(user).data,
+                    'doctor_profile': unified_profile.profile_data,
+                    'token': token.key
+                }, status=status.HTTP_201_CREATED)
             else:
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 

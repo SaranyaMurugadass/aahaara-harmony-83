@@ -1,80 +1,88 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Mail, Lock, User, Calendar, MapPin } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/services/api";
 
 const PatientAuth = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent, isSignUp: boolean) => {
+  // Login form state
+  const [loginData, setLoginData] = useState({
+    email: "",
+    password: "",
+  });
+
+  // Registration form state
+  const [registerData, setRegisterData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    password_confirm: "",
+    first_name: "",
+    last_name: "",
+    phone_number: "",
+    date_of_birth: "",
+    gender: "",
+    blood_type: "",
+    height: "",
+    weight: "",
+    location: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+    medical_history: "",
+    allergies: "",
+    current_medications: "",
+  });
+
+  const from = location.state?.from?.pathname || "/patient-dashboard";
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        // Registration
-        const formData = new FormData(e.target as HTMLFormElement);
-        const data = {
-          username: formData.get('username') as string,
-          email: formData.get('email') as string,
-          password: formData.get('password') as string,
-          password_confirm: formData.get('password') as string,
-          first_name: formData.get('firstName') as string,
-          last_name: formData.get('lastName') as string,
-          age: parseInt(formData.get('age') as string) || 0,
-          gender: formData.get('gender') as string,
-          location: formData.get('location') as string,
-          phone_number: formData.get('phone_number') as string || '',
-        };
-
-        // Validate password length
-        if (data.password.length < 8) {
-          toast({
-            title: "Password too short",
-            description: "Password must be at least 8 characters long",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        await apiClient.registerPatient(data);
-
-        toast({
-          title: "Account created successfully!",
-          description: "Your account has been created. You can now access your wellness dashboard.",
-        });
-      } else {
-        // Login
-        const formData = new FormData(e.target as HTMLFormElement);
-        const data = {
-          email: formData.get('email') as string,
-          password: formData.get('password') as string,
-        };
-
-        await apiClient.login(data.email, data.password);
-
-        toast({
-          title: "Welcome back!",
-          description: "Redirecting to your patient dashboard...",
-        });
+      const success = await login(loginData.email, loginData.password);
+      if (success) {
+        navigate(from, { replace: true });
       }
-
-      // Navigate to patient dashboard
-      setTimeout(() => {
-        navigate('/patient-dashboard');
-      }, 1500);
     } catch (error) {
+      console.error("Login error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await apiClient.registerPatient(registerData);
+      if (response.token && response.user) {
+        toast({
+          title: "Registration Successful!",
+          description: "Your account has been created successfully. You are now logged in.",
+        });
+        navigate(from, { replace: true });
+      }
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
+        title: "Registration Failed",
+        description: error.message || "An error occurred during registration. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -82,111 +90,113 @@ const PatientAuth = () => {
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    setLoginData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRegisterInputChange = (field: string, value: string) => {
+    setRegisterData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-earth flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/10 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         {/* Back Button */}
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={() => navigate('/')}
-          className="mb-4"
+          className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Home
         </Button>
 
-        <Card className="shadow-healing">
-          <CardHeader className="text-center space-y-4">
-            <CardTitle className="text-2xl bg-gradient-healing bg-clip-text text-transparent">
+        <Card className="shadow-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Patient Portal
             </CardTitle>
-            <p className="text-muted-foreground">
+            <CardDescription>
               Access your personalized Ayurvedic wellness journey
-            </p>
+            </CardDescription>
           </CardHeader>
-
           <CardContent>
-            <Tabs defaultValue="signin" className="space-y-6">
+            <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="signin">
-                <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
+              {/* Login Tab */}
+              <TabsContent value="login" className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={loginData.email}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      required
+                    />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="login-password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                       <Input
-                        id="password"
-                        name="password"
-                        type="password"
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
-                        className="pl-10"
+                        value={loginData.password}
+                        onChange={(e) => handleInputChange("password", e.target.value)}
                         required
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-healing hover:opacity-90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Signing in..." : "Sign In"}
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
+                    Login
                   </Button>
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup">
-                <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      name="username"
-                      placeholder="Choose a username"
-                      required
-                    />
-                  </div>
-
+              {/* Register Tab */}
+              <TabsContent value="register" className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="firstName"
-                          name="firstName"
-                          placeholder="First name"
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="first_name">First Name</Label>
                       <Input
-                        id="lastName"
-                        name="lastName"
+                        id="first_name"
+                        placeholder="First name"
+                        value={registerData.first_name}
+                        onChange={(e) => handleRegisterInputChange("first_name", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="last_name">Last Name</Label>
+                      <Input
+                        id="last_name"
                         placeholder="Last name"
+                        value={registerData.last_name}
+                        onChange={(e) => handleRegisterInputChange("last_name", e.target.value)}
                         required
                       />
                     </div>
@@ -194,97 +204,189 @@ const PatientAuth = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={registerData.email}
+                      onChange={(e) => handleRegisterInputChange("email", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      placeholder="Choose a username"
+                      value={registerData.username}
+                      onChange={(e) => handleRegisterInputChange("username", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone_number">Phone Number</Label>
+                    <Input
+                      id="phone_number"
+                      placeholder="Enter your phone number"
+                      value={registerData.phone_number}
+                      onChange={(e) => handleRegisterInputChange("phone_number", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="date_of_birth">Date of Birth</Label>
                       <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        className="pl-10"
+                        id="date_of_birth"
+                        type="date"
+                        value={registerData.date_of_birth}
+                        onChange={(e) => handleRegisterInputChange("date_of_birth", e.target.value)}
                         required
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gender">Gender</Label>
+                      <select
+                        id="gender"
+                        value={registerData.gender}
+                        onChange={(e) => handleRegisterInputChange("gender", e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                        <option value="prefer-not-to-say">Prefer not to say</option>
+                      </select>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="age">Age</Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="age"
-                          name="age"
-                          type="number"
-                          placeholder="Age"
-                          className="pl-10"
-                          min="1"
-                          max="120"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="gender">Gender</Label>
-                      <select
-                        id="gender"
-                        name="gender"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        required
-                      >
-                        <option value="">Select</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                      <Label htmlFor="height">Height (cm)</Label>
                       <Input
-                        id="location"
-                        name="location"
-                        placeholder="City, Country"
-                        className="pl-10"
+                        id="height"
+                        type="number"
+                        placeholder="Height in cm"
+                        value={registerData.height}
+                        onChange={(e) => handleRegisterInputChange("height", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="weight">Weight (kg)</Label>
+                      <Input
+                        id="weight"
+                        type="number"
+                        placeholder="Weight in kg"
+                        value={registerData.weight}
+                        onChange={(e) => handleRegisterInputChange("weight", e.target.value)}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone_number">Phone Number (Optional)</Label>
+                    <Label htmlFor="blood_type">Blood Type</Label>
+                    <select
+                      id="blood_type"
+                      value={registerData.blood_type}
+                      onChange={(e) => handleRegisterInputChange("blood_type", e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Select Blood Type</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                      <option value="unknown">Unknown</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
                     <Input
-                      id="phone_number"
-                      name="phone_number"
-                      type="tel"
-                      placeholder="Phone number"
+                      id="location"
+                      placeholder="City, State"
+                      value={registerData.location}
+                      onChange={(e) => handleRegisterInputChange("location", e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="password"
-                        name="password"
-                        type="password"
-                        placeholder="Create password"
-                        className="pl-10"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        value={registerData.password}
+                        onChange={(e) => handleRegisterInputChange("password", e.target.value)}
                         required
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-healing hover:opacity-90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Creating Account..." : "Create Account"}
+                  <div className="space-y-2">
+                    <Label htmlFor="password_confirm">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password_confirm"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        value={registerData.password_confirm}
+                        onChange={(e) => handleRegisterInputChange("password_confirm", e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {registerData.password !== registerData.password_confirm && registerData.password_confirm && (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        Passwords do not match
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                    )}
+                    Create Account
                   </Button>
                 </form>
               </TabsContent>

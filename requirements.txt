@@ -1,6 +1,14 @@
-Django==5.2.6
+Django==4.2.16
 djangorestframework==3.16.1
 django-cors-headers==4.9.0
 supabase==2.19.0
 python-dotenv==1.1.1
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.9  # PostgreSQL support for Supabase
+dj-database-url==2.1.0  # Parse DATABASE_URL
+Pillow==10.4.0
+django-filter==24.3
+django-extensions==3.2.3
+celery==5.3.6
+redis==5.0.1
+django-celery-beat==2.5.0
+django-celery-results==2.5.1

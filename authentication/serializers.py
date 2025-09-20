@@ -3,8 +3,8 @@ Serializers for authentication and user management
 """
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.core.exceptions import ValidationError
 from .models import User, DoctorProfile, PatientProfile
-from .supabase_service import supabase_service
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
@@ -13,11 +13,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'role', 'password', 'password_confirm')
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role']
         extra_kwargs = {
             'password': {'write_only': True},
-            'password_confirm': {'write_only': True},
+            'password_confirm': {'write_only': True}
         }
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
     
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -34,21 +44,35 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class DoctorProfileSerializer(serializers.ModelSerializer):
     """Serializer for doctor profile"""
-    user = UserRegistrationSerializer(read_only=True)
+    display_name = serializers.ReadOnlyField()
+    specialization_display = serializers.ReadOnlyField(source='get_specialization_display')
     
     class Meta:
         model = DoctorProfile
-        fields = '__all__'
-        read_only_fields = ('user', 'is_verified', 'created_at', 'updated_at')
+        fields = [
+            'id', 'qualification', 'experience_years', 'license_number', 
+            'specialization', 'specialization_display', 'bio', 'consultation_fee', 
+            'is_verified', 'rating', 'total_consultations', 'profile_picture',
+            'languages', 'consultation_hours', 'display_name', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'is_verified', 'rating', 'total_consultations', 'created_at', 'updated_at']
 
 class PatientProfileSerializer(serializers.ModelSerializer):
     """Serializer for patient profile"""
-    user = UserRegistrationSerializer(read_only=True)
+    age = serializers.ReadOnlyField()
+    bmi = serializers.ReadOnlyField()
+    gender_display = serializers.ReadOnlyField(source='get_gender_display')
     
     class Meta:
         model = PatientProfile
-        fields = '__all__'
-        read_only_fields = ('user', 'created_at', 'updated_at')
+        fields = [
+            'id', 'date_of_birth', 'age', 'gender', 'gender_display', 'blood_type',
+            'height', 'weight', 'bmi', 'location', 'emergency_contact_name',
+            'emergency_contact_phone', 'emergency_contact_relation', 'medical_history',
+            'allergies', 'current_medications', 'profile_picture', 'insurance_provider',
+            'insurance_number', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'age', 'bmi', 'created_at', 'updated_at']
 
 class UserLoginSerializer(serializers.Serializer):
     """Serializer for user login"""
@@ -73,12 +97,44 @@ class UserLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('Must include email and password')
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for user details"""
-    doctor_profile = DoctorProfileSerializer(read_only=True)
-    patient_profile = PatientProfileSerializer(read_only=True)
+    """Serializer for user data"""
+    full_name = serializers.ReadOnlyField()
+    role_display_name = serializers.ReadOnlyField(source='get_role_display_name')
     
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 
-                 'doctor_profile', 'patient_profile', 'date_joined', 'is_active')
-        read_only_fields = ('id', 'date_joined', 'is_active')
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
+            'role', 'role_display_name', 'is_active', 'is_staff', 'is_superuser',
+            'date_joined', 'last_login', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'date_joined', 'is_active', 'last_login', 'created_at', 'updated_at']
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating user data"""
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'phone_number']
+    
+    def validate_email(self, value):
+        if self.instance and User.objects.filter(email=value).exclude(id=self.instance.id).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+class DoctorProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating doctor profile"""
+    class Meta:
+        model = DoctorProfile
+        fields = [
+            'qualification', 'bio', 'consultation_fee', 'languages', 'consultation_hours'
+        ]
+
+class PatientProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating patient profile"""
+    class Meta:
+        model = PatientProfile
+        fields = [
+            'date_of_birth', 'height', 'weight', 'location', 'emergency_contact_name',
+            'emergency_contact_phone', 'emergency_contact_relation', 'medical_history',
+            'allergies', 'current_medications', 'insurance_provider', 'insurance_number'
+        ]

@@ -1,8 +1,8 @@
 /**
- * API service for connecting with Django backend
+ * Enhanced API service for connecting with Django backend
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // API client configuration
 class ApiClient {
@@ -26,7 +26,8 @@ class ApiClient {
 
     private async request<T>(
         endpoint: string,
-        options: RequestInit = {}
+        options: RequestInit = {},
+        retries: number = 3
     ): Promise<T> {
         const url = `${this.baseURL}${endpoint}`;
         const headers: HeadersInit = {
@@ -45,26 +46,66 @@ class ApiClient {
             body: options.body
         });
 
-        const response = await fetch(url, {
-            ...options,
-            headers,
-        });
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers,
+            });
 
-        console.log('🔍 API Response:', {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries())
-        });
+            console.log('🔍 API Response:', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('❌ API Error Response:', errorData);
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ API Error Response:', errorData);
+
+                // Handle specific error cases
+                if (response.status === 401) {
+                    // Unauthorized - clear token and redirect to login
+                    this.clearToken();
+                    window.location.href = '/patient-login';
+                    throw new Error('Session expired. Please login again.');
+                }
+
+                if (response.status === 403) {
+                    throw new Error('Access denied. You don\'t have permission to perform this action.');
+                }
+
+                if (response.status >= 500) {
+                    throw new Error('Server error. Please try again later.');
+                }
+
+                // Handle validation errors with more detail
+                if (response.status === 400 && errorData) {
+                    const validationErrors = [];
+                    for (const [field, messages] of Object.entries(errorData)) {
+                        if (Array.isArray(messages)) {
+                            validationErrors.push(`${field}: ${messages.join(', ')}`);
+                        } else {
+                            validationErrors.push(`${field}: ${messages}`);
+                        }
+                    }
+                    throw new Error(validationErrors.join('; '));
+                }
+
+                throw new Error(errorData.error || errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+
+            const responseData = await response.json();
+            console.log('✅ API Success Response:', responseData);
+            return responseData;
+        } catch (error: any) {
+            if (retries > 0 && error.name === 'TypeError' && error.message.includes('fetch')) {
+                // Network error - retry
+                console.log(`🔄 Retrying request (${retries} attempts left)...`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return this.request<T>(endpoint, options, retries - 1);
+            }
+            throw error;
         }
-
-        const responseData = await response.json();
-        console.log('✅ API Success Response:', responseData);
-        return responseData;
     }
 
     // Authentication endpoints
@@ -93,12 +134,14 @@ class ApiClient {
         password_confirm: string;
         first_name: string;
         last_name: string;
+        phone_number?: string;
         qualification: string;
         experience_years: number;
         license_number: string;
         specialization: string;
         bio?: string;
         consultation_fee?: number;
+        languages?: string[];
     }) {
         console.log('🔍 API Client - registerDoctor data:', data);
         console.log('🔍 API Client - JSON stringified:', JSON.stringify(data));
@@ -110,23 +153,45 @@ class ApiClient {
     }
 
     async login(email: string, password: string) {
-        const response = await this.request('/auth/login/', {
+        // Clear any existing token before login
+        this.clearToken();
+
+        console.log('🔐 Attempting login for:', email);
+
+        // For login, don't use the request method that adds auth headers
+        const response = await fetch(`${this.baseURL}/auth/login/`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({ email, password }),
         });
 
-        if (response.token) {
-            this.setToken(response.token);
+        console.log('🔐 Login response status:', response.status);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ Login failed:', errorData);
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
         }
 
-        return response;
+        const data = await response.json();
+        console.log('✅ Login successful, received token:', data.token ? 'Yes' : 'No');
+
+        if (data.token) {
+            this.setToken(data.token);
+        }
+
+        return data;
     }
 
     async logout() {
+        console.log('🚪 Attempting logout...');
         const response = await this.request('/auth/logout/', {
             method: 'POST',
         });
         this.clearToken();
+        console.log('✅ Logout successful');
         return response;
     }
 
@@ -142,16 +207,69 @@ class ApiClient {
     }
 
     // Patient endpoints
-    async getPatients() {
-        return this.request('/patients/');
+    async getPatients(): Promise<{ results: Patient[]; count: number; next: string | null; previous: string | null }> {
+        console.log('🔍 API Client - getPatients called');
+        console.log('🔍 API Client - baseURL:', this.baseURL);
+        console.log('🔍 API Client - token:', this.token ? 'Present' : 'Not present');
+
+        const result = await this.request('/patients/');
+        console.log('🔍 API Client - getPatients result:', result);
+        return result;
     }
 
     async getPatient(id: number) {
         return this.request(`/patients/${id}/`);
     }
 
-    async getPatientSummary(id: number) {
+    async getPatientSummary(id: number): Promise<PatientSummaryType> {
         return this.request(`/patients/${id}/summary/`);
+    }
+
+    async createPatient(data: {
+        user: number;
+        assigned_doctor?: number;
+        notes?: string;
+    }) {
+        return this.request('/patients/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async updatePatient(id: number, data: {
+        assigned_doctor?: number;
+        status?: string;
+        notes?: string;
+        is_active?: boolean;
+    }) {
+        return this.request(`/patients/${id}/`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async deletePatient(id: number) {
+        return this.request(`/patients/${id}/`, {
+            method: 'DELETE',
+        });
+    }
+
+    async assignDoctor(patientId: number) {
+        return this.request(`/patients/${patientId}/assign-doctor/`, {
+            method: 'POST',
+        });
+    }
+
+    async getPrakritiAnalyses(patientId: number): Promise<{ results: PrakritiAnalysisType[]; count: number; next: string | null; previous: string | null }> {
+        return this.request(`/patients/${patientId}/prakriti/`);
+    }
+
+    async getDiseaseAnalyses(patientId: number): Promise<{ results: DiseaseAnalysisType[]; count: number; next: string | null; previous: string | null }> {
+        return this.request(`/patients/${patientId}/diseases/`);
+    }
+
+    async getConsultations(patientId: number) {
+        return this.request(`/patients/${patientId}/consultations/`);
     }
 
     async createPrakritiAnalysis(patientId: number, data: {
@@ -323,12 +441,101 @@ export interface PatientProfile {
 
 export interface Patient {
     id: number;
+    patient_id: string;
     user_name: string;
     user_email: string;
     assigned_doctor_name?: string;
+    status: 'active' | 'inactive' | 'suspended' | 'discharged';
     registration_date: string;
     last_consultation?: string;
+    next_appointment?: string;
     is_active: boolean;
+    notes?: string;
+    display_name: string;
+}
+
+export interface PrakritiAnalysis {
+    id: number;
+    patient: number;
+    patient_name: string;
+    primary_dosha: string;
+    primary_dosha_display: string;
+    secondary_dosha?: string;
+    vata_score: number;
+    pitta_score: number;
+    kapha_score: number;
+    total_score: number;
+    dosha_percentages: {
+        vata: number;
+        pitta: number;
+        kapha: number;
+    };
+    analysis_notes?: string;
+    recommendations?: string;
+    status: 'draft' | 'completed' | 'reviewed';
+    analyzed_by: number;
+    analyzed_by_name: string;
+    analysis_date: string;
+    updated_at: string;
+}
+
+export interface DiseaseAnalysis {
+    id: number;
+    patient: number;
+    patient_name: string;
+    disease_name: string;
+    icd_code?: string;
+    severity: 'mild' | 'moderate' | 'severe' | 'critical';
+    severity_display: string;
+    status: 'active' | 'inactive' | 'cured' | 'chronic';
+    status_display: string;
+    symptoms: string;
+    diagnosis_notes?: string;
+    treatment_plan?: string;
+    medications: any[];
+    follow_up_required: boolean;
+    follow_up_date?: string;
+    diagnosed_by: number;
+    diagnosed_by_name: string;
+    diagnosis_date: string;
+    updated_at: string;
+    is_active: boolean;
+}
+
+export interface Consultation {
+    id: number;
+    patient: number;
+    patient_name: string;
+    doctor: number;
+    doctor_name: string;
+    consultation_type: 'initial' | 'follow_up' | 'emergency' | 'routine' | 'telemedicine' | 'diet_review';
+    consultation_type_display: string;
+    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+    status_display: string;
+    chief_complaint: string;
+    history_of_present_illness?: string;
+    physical_examination?: string;
+    vital_signs: Record<string, any>;
+    assessment?: string;
+    plan?: string;
+    prescription?: string;
+    recommendations?: string;
+    follow_up_date?: string;
+    consultation_date: string;
+    actual_start_time?: string;
+    actual_end_time?: string;
+    duration_minutes: number;
+    actual_duration?: number;
+    consultation_fee?: number;
+    payment_status: 'pending' | 'paid' | 'partial' | 'waived';
+    notes?: string;
+}
+
+export interface PatientSummary {
+    patient: Patient;
+    prakriti_analysis?: PrakritiAnalysis;
+    active_diseases: DiseaseAnalysis[];
+    recent_consultations: Consultation[];
 }
 
 export interface FoodItem {

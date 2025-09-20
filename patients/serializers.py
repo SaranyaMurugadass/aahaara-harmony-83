@@ -6,50 +6,90 @@ from .models import Patient, PrakritiAnalysis, DiseaseAnalysis, Consultation
 from authentication.models import DoctorProfile
 
 class PatientSerializer(serializers.ModelSerializer):
-    """Serializer for patient details"""
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    """Serializer for patient data"""
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
-    assigned_doctor_name = serializers.CharField(source='assigned_doctor.user.get_full_name', read_only=True)
+    assigned_doctor_name = serializers.CharField(source='assigned_doctor.display_name', read_only=True)
+    display_name = serializers.ReadOnlyField()
     
     class Meta:
         model = Patient
-        fields = '__all__'
-        read_only_fields = ('user', 'registration_date', 'last_consultation')
+        fields = [
+            'id', 'patient_id', 'user_name', 'user_email', 'assigned_doctor_name',
+            'status', 'registration_date', 'last_consultation', 'next_appointment',
+            'is_active', 'notes', 'display_name'
+        ]
+        read_only_fields = ['id', 'patient_id', 'registration_date', 'display_name']
 
 class PrakritiAnalysisSerializer(serializers.ModelSerializer):
     """Serializer for Prakriti analysis"""
-    patient_name = serializers.CharField(source='patient.user.get_full_name', read_only=True)
-    analyzed_by_name = serializers.CharField(source='analyzed_by.user.get_full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.user.full_name', read_only=True)
+    analyzed_by_name = serializers.CharField(source='analyzed_by.display_name', read_only=True)
+    primary_dosha_display = serializers.ReadOnlyField(source='get_primary_dosha_display')
+    total_score = serializers.ReadOnlyField()
+    dosha_percentages = serializers.ReadOnlyField()
     
     class Meta:
         model = PrakritiAnalysis
-        fields = '__all__'
-        read_only_fields = ('analysis_date',)
+        fields = [
+            'id', 'patient', 'patient_name', 'primary_dosha', 'primary_dosha_display',
+            'secondary_dosha', 'vata_score', 'pitta_score', 'kapha_score',
+            'total_score', 'dosha_percentages', 'analysis_notes', 'recommendations',
+            'status', 'analyzed_by', 'analyzed_by_name', 'analysis_date', 'updated_at'
+        ]
+        read_only_fields = ['id', 'analysis_date', 'updated_at']
 
 class DiseaseAnalysisSerializer(serializers.ModelSerializer):
     """Serializer for disease analysis"""
-    patient_name = serializers.CharField(source='patient.user.get_full_name', read_only=True)
-    diagnosed_by_name = serializers.CharField(source='diagnosed_by.user.get_full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.user.full_name', read_only=True)
+    diagnosed_by_name = serializers.CharField(source='diagnosed_by.display_name', read_only=True)
+    severity_display = serializers.ReadOnlyField(source='get_severity_display')
+    status_display = serializers.ReadOnlyField(source='get_status_display')
     
     class Meta:
         model = DiseaseAnalysis
-        fields = '__all__'
-        read_only_fields = ('diagnosis_date',)
+        fields = [
+            'id', 'patient', 'patient_name', 'disease_name', 'icd_code', 'severity',
+            'severity_display', 'status', 'status_display', 'symptoms', 'diagnosis_notes',
+            'treatment_plan', 'medications', 'follow_up_required', 'follow_up_date',
+            'diagnosed_by', 'diagnosed_by_name', 'diagnosis_date', 'updated_at', 'is_active'
+        ]
+        read_only_fields = ['id', 'diagnosis_date', 'updated_at']
 
 class ConsultationSerializer(serializers.ModelSerializer):
-    """Serializer for consultations"""
-    patient_name = serializers.CharField(source='patient.user.get_full_name', read_only=True)
-    doctor_name = serializers.CharField(source='doctor.user.get_full_name', read_only=True)
+    """Serializer for consultation data"""
+    patient_name = serializers.CharField(source='patient.user.full_name', read_only=True)
+    doctor_name = serializers.CharField(source='doctor.display_name', read_only=True)
+    consultation_type_display = serializers.ReadOnlyField(source='get_consultation_type_display')
+    status_display = serializers.ReadOnlyField(source='get_status_display')
+    actual_duration = serializers.ReadOnlyField()
     
     class Meta:
         model = Consultation
-        fields = '__all__'
-        read_only_fields = ('consultation_date',)
+        fields = [
+            'id', 'patient', 'patient_name', 'doctor', 'doctor_name', 'consultation_type',
+            'consultation_type_display', 'status', 'status_display', 'chief_complaint',
+            'history_of_present_illness', 'physical_examination', 'vital_signs',
+            'assessment', 'plan', 'prescription', 'recommendations', 'follow_up_date',
+            'consultation_date', 'actual_start_time', 'actual_end_time', 'duration_minutes',
+            'actual_duration', 'consultation_fee', 'payment_status', 'notes'
+        ]
+        read_only_fields = ['id', 'consultation_date']
 
 class ConsultationCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating consultations"""
-    
     class Meta:
         model = Consultation
-        fields = '__all__'
-        read_only_fields = ('consultation_date',)
+        fields = [
+            'patient', 'consultation_type', 'chief_complaint', 'history_of_present_illness',
+            'physical_examination', 'vital_signs', 'assessment', 'plan', 'prescription',
+            'recommendations', 'follow_up_date', 'duration_minutes', 'consultation_fee',
+            'payment_status', 'notes'
+        ]
+
+class PatientSummarySerializer(serializers.Serializer):
+    """Serializer for comprehensive patient summary"""
+    patient = PatientSerializer()
+    prakriti_analysis = PrakritiAnalysisSerializer(allow_null=True)
+    active_diseases = DiseaseAnalysisSerializer(many=True)
+    recent_consultations = ConsultationSerializer(many=True)

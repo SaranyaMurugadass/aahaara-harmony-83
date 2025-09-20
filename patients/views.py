@@ -1,5 +1,5 @@
 """
-Views for patient management
+Views for patient management - Updated for unified structure
 """
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, permission_classes
@@ -13,24 +13,53 @@ from .serializers import (
     ConsultationSerializer,
     ConsultationCreateSerializer
 )
-from authentication.models import DoctorProfile
+from authentication.models import User, UnifiedProfile, UnifiedPatient
+from authentication.supabase_service import supabase_service
 
-class PatientListCreateView(generics.ListCreateAPIView):
-    """List and create patients"""
-    serializer_class = PatientSerializer
-    permission_classes = [permissions.IsAuthenticated]
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def patient_list(request):
+    """List patients using unified structure"""
+    user = request.user
     
-    def get_queryset(self):
-        user = self.request.user
-        if user.role == 'doctor':
-            return Patient.objects.filter(assigned_doctor__user=user)
-        elif user.role == 'patient':
-            return Patient.objects.filter(user=user)
-        return Patient.objects.none()
+    if user.role == 'doctor':
+        # Doctors can see all patients
+        patients = UnifiedPatient.objects.all()
+    elif user.role == 'patient':
+        # Patients can only see their own record
+        patients = UnifiedPatient.objects.filter(user=user)
+    else:
+        patients = UnifiedPatient.objects.none()
     
-    def perform_create(self, serializer):
-        if self.request.user.role == 'patient':
-            serializer.save(user=self.request.user)
+    # Convert to frontend format
+    patient_data = []
+    for patient in patients:
+        profile = patient.user.unified_profile.filter(profile_type='patient').first()
+        patient_info = {
+            'id': patient.id,
+            'patient_id': patient.patient_id,
+            'user_name': patient.user.full_name,
+            'user_email': patient.user.email,
+            'status': patient.status,
+            'age': patient.age,
+            'gender': profile.get_profile_data('gender', '') if profile else '',
+            'blood_type': patient.get_medical_data('blood_type', 'unknown'),
+            'height': patient.get_medical_data('height'),
+            'weight': patient.get_medical_data('weight'),
+            'bmi': patient.bmi,
+            'location': profile.get_profile_data('location', '') if profile else '',
+            'phone_number': profile.get_profile_data('phone_number', '') if profile else '',
+            'created_at': patient.created_at,
+            'updated_at': patient.updated_at,
+        }
+        patient_data.append(patient_info)
+    
+    return Response({
+        'results': patient_data,
+        'count': len(patient_data),
+        'next': None,
+        'previous': None
+    })
 
 class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve, update, or delete a patient"""
@@ -63,7 +92,12 @@ class PrakritiAnalysisListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         if self.request.user.role == 'doctor':
             doctor_profile = get_object_or_404(DoctorProfile, user=self.request.user)
-            serializer.save(analyzed_by=doctor_profile)
+            prakriti_analysis = serializer.save(analyzed_by=doctor_profile)
+            # Sync to Supabase
+            try:
+                supabase_service.sync_prakriti_analysis(prakriti_analysis)
+            except Exception as e:
+                print(f"Warning: Failed to sync Prakriti analysis to Supabase: {e}")
 
 class DiseaseAnalysisListCreateView(generics.ListCreateAPIView):
     """List and create disease analyses"""

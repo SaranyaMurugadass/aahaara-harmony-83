@@ -98,7 +98,12 @@ const prakritiQuestions = [
   }
 ];
 
-const PrakritiAnalysis = ({ patient, onComplete }) => {
+interface PrakritiAnalysisProps {
+  patient: any;
+  onComplete: (scores: { vata: number; pitta: number; kapha: number }) => void;
+}
+
+const PrakritiAnalysis = ({ patient, onComplete }: PrakritiAnalysisProps) => {
   const [answers, setAnswers] = useState({});
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [showResults, setShowResults] = useState(false);
@@ -113,7 +118,7 @@ const PrakritiAnalysis = ({ patient, onComplete }) => {
 
   const calculateResults = () => {
     const scores = { vata: 0, pitta: 0, kapha: 0 };
-    
+
     Object.values(answers).forEach((answer: any) => {
       scores[answer as keyof typeof scores]++;
     });
@@ -154,7 +159,7 @@ const PrakritiAnalysis = ({ patient, onComplete }) => {
   const canProceed = answers[currentQ.id];
 
   if (showResults) {
-    const dominantDosha = Object.entries(results).reduce((a, b) => 
+    const dominantDosha = Object.entries(results).reduce((a, b) =>
       results[a[0]] > results[b[0]] ? a : b
     )[0];
 
