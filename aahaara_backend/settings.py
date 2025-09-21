@@ -54,11 +54,13 @@ INSTALLED_APPS = [
     'patients',
     'doctors',
     'diet_charts',
+    'health',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # For static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -99,17 +101,27 @@ SUPABASE_DB_PASSWORD = os.getenv('SUPABASE_DB_PASSWORD', 'your_supabase_db_passw
 # Database configuration
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-# Use Supabase PostgreSQL as the ONLY database - NO SQLITE
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': SUPABASE_DB_PASSWORD,
-        'HOST': 'db.kftwkwggfywbjarrktam.supabase.co',
-        'PORT': '5432',
+if DATABASE_URL:
+    # Production database (Render PostgreSQL)
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
     }
-}
+else:
+    # Development database (Supabase PostgreSQL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DATABASE_NAME', 'postgres'),
+            'USER': os.getenv('DATABASE_USER', 'postgres'),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', SUPABASE_DB_PASSWORD),
+            'HOST': os.getenv('DATABASE_HOST', 'db.kftwkwggfywbjarrktam.supabase.co'),
+            'PORT': os.getenv('DATABASE_PORT', '5432'),
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
+    }
 
 
 # Password validation
@@ -146,8 +158,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Additional static files directories
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# Static files storage for production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 MEDIA_URL = '/media/'
@@ -178,6 +198,14 @@ CORS_ALLOW_CREDENTIALS = True
 # Additional CORS settings for development
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
+# Production CORS settings
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        "https://aahaara-harmony-83.onrender.com",  # Your frontend URL on Render
+        "https://aahaara-frontend.onrender.com",    # Alternative frontend URL
+    ]
+    CORS_ALLOW_ALL_ORIGINS = False
+
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
 
@@ -204,27 +232,30 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'formatter': 'verbose',
-        },
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO' if not DEBUG else 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'simple' if not DEBUG else 'verbose',
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+        'handlers': ['console'],
+        'level': 'INFO' if not DEBUG else 'DEBUG',
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'aahaara_backend': {
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
