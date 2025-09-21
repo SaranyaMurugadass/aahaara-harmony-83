@@ -20,13 +20,18 @@ else
         if pip install -r requirements-basic.txt; then
             echo "✅ Basic requirements installed successfully"
         else
-            echo "❌ Basic requirements failed, trying minimal requirements..."
-            if pip install -r requirements-minimal.txt; then
-                echo "✅ Minimal requirements installed successfully"
+        echo "❌ Basic requirements failed, trying minimal requirements..."
+        if pip install -r requirements-minimal.txt; then
+            echo "✅ Minimal requirements installed successfully"
+        else
+            echo "❌ Minimal requirements failed, trying ultra-minimal requirements..."
+            if pip install -r requirements-ultra-minimal.txt; then
+                echo "✅ Ultra-minimal requirements installed successfully"
             else
                 echo "❌ All installation attempts failed"
                 exit 1
             fi
+        fi
         fi
     fi
 fi

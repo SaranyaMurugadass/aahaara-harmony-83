@@ -8,18 +8,17 @@
 
 **Solution**: This is often caused by package version compatibility issues with Python 3.13.
 
-**For Render Deployment**: 
+**For Render Deployment**:
+
 1. **Try the fallback build script**: The updated `build.sh` now tries multiple requirements files
 2. **Use basic requirements**: If full requirements fail, try `requirements-basic.txt`
-3. **Use minimal requirements**: As a last resort, try `requirements-minimal.txt`
-4. **Use simple build script**: Try `build-simple.sh` which only installs essential packages
+3. **Use minimal requirements**: As a fallback, try `requirements-minimal.txt`
+4. **Use ultra-minimal requirements**: As last resort, try `requirements-ultra-minimal.txt`
+5. **Use ultra-simple build script**: Try `build-ultra-simple.sh` which only installs absolute essentials
 
-**For Local Development on Windows**:
-
-```bash
-# Use the development requirements file
-pip install -r requirements-dev.txt
-```
+**Alternative Build Commands for Render**:
+- `./build-ultra-simple.sh` - Only essential packages
+- `pip install -r requirements-ultra-minimal.txt && python manage.py collectstatic --noinput && python manage.py migrate`
 
 ### 2. **realtime Package Version Error**
 
