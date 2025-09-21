@@ -5,6 +5,7 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 ## 🌟 Features
 
 ### For Patients
+
 - **Personalized Dashboard**: Track your wellness journey with real-time progress monitoring
 - **Diet Chart Management**: Access and follow personalized Ayurvedic diet plans
 - **Appointment Booking**: Schedule consultations with your healthcare provider
@@ -13,6 +14,7 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 - **Reminder System**: Get notified about meal times and appointments
 
 ### For Doctors/Dietitians
+
 - **Patient Management**: Comprehensive patient profiles with health history
 - **Prakriti Analysis**: Conduct detailed Ayurvedic constitution assessments
 - **Disease Analysis**: Track and manage patient health conditions
@@ -24,6 +26,7 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 ## 🚀 Technology Stack
 
 ### Frontend
+
 - **React 18** with TypeScript
 - **Vite** for build tooling
 - **Tailwind CSS** for styling
@@ -34,6 +37,7 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 - **Zod** for validation
 
 ### Backend
+
 - **Django 5.2** with Python
 - **Django REST Framework** for APIs
 - **PostgreSQL** for production database
@@ -45,6 +49,7 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 ## 📦 Installation
 
 ### Prerequisites
+
 - Node.js 18+ and npm
 - Python 3.11+
 - PostgreSQL (for production)
@@ -53,35 +58,41 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 ### Backend Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd aahaara-harmony-83
    ```
 
 2. **Create and activate virtual environment**
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Set up environment variables**
+
    ```bash
    cp config.env.example config.env
    # Edit config.env with your configuration
    ```
 
 5. **Run migrations**
+
    ```bash
    python manage.py makemigrations
    python manage.py migrate
    ```
 
 6. **Create superuser**
+
    ```bash
    python manage.py createsuperuser
    ```
@@ -94,11 +105,13 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 ### Frontend Setup
 
 1. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 2. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -164,6 +177,7 @@ VITE_APP_VERSION=1.0.0
 ## 🔌 API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register/patient/` - Patient registration
 - `POST /api/auth/register/doctor/` - Doctor registration
 - `POST /api/auth/login/` - User login
@@ -171,6 +185,7 @@ VITE_APP_VERSION=1.0.0
 - `GET /api/auth/profile/` - Get user profile
 
 ### Patients
+
 - `GET /api/patients/` - List patients
 - `GET /api/patients/{id}/` - Get patient details
 - `GET /api/patients/{id}/summary/` - Get patient summary
@@ -179,6 +194,7 @@ VITE_APP_VERSION=1.0.0
 - `POST /api/patients/{id}/consultations/` - Create consultation
 
 ### Diet Charts
+
 - `GET /api/diet-charts/foods/` - List food items
 - `GET /api/diet-charts/charts/` - List diet charts
 - `POST /api/diet-charts/charts/` - Create diet chart
@@ -215,26 +231,28 @@ The frontend uses a comprehensive design system with:
 ### Production Deployment
 
 1. **Backend Deployment**
+
    ```bash
    # Set production environment variables
    export USE_POSTGRES=True
    export DEBUG=False
-   
+
    # Run migrations
    python manage.py migrate
-   
+
    # Collect static files
    python manage.py collectstatic
-   
+
    # Start with Gunicorn
    gunicorn aahaara_backend.wsgi:application
    ```
 
 2. **Frontend Deployment**
+
    ```bash
    # Build for production
    npm run build
-   
+
    # Serve with nginx or similar
    ```
 
@@ -260,6 +278,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For support and questions:
+
 - Create an issue in the repository
 - Contact the development team
 - Check the documentation

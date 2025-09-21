@@ -19,10 +19,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '.onrender.com',  # Render domain
-    os.getenv('RENDER_EXTERNAL_HOSTNAME', ''),  # Render external hostname
+    '*'  # Render external hostname
 ]
 
 # Application definition
