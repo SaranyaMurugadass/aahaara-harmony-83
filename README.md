@@ -38,7 +38,7 @@ A modern, cloud-based practice management and nutrient analysis software tailore
 - **Django REST Framework** for APIs
 - **PostgreSQL** for production database
 - **SQLite** for development
-- **Celery** for background tasks
+- **Background tasks** (Celery removed for minimal deployment)
 - **Redis** for caching and message broker
 - **Supabase** for additional cloud services
 

@@ -48,8 +48,6 @@ INSTALLED_APPS = [
     'django_filters',
     'django_extensions',
     'food_database',
-    'django_celery_beat',
-    'django_celery_results',
     'authentication',
     'patients',
     'doctors',
@@ -209,13 +207,7 @@ if not DEBUG:
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
 
-# Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = TIME_ZONE
+# Celery configuration removed for minimal deployment
 
 # Email Configuration (for future use)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

@@ -17,6 +17,7 @@
 5. **Use ultra-simple build script**: Try `build-ultra-simple.sh` which only installs absolute essentials
 
 **Alternative Build Commands for Render**:
+
 - `./build-ultra-simple.sh` - Only essential packages
 - `pip install -r requirements-ultra-minimal.txt && python manage.py collectstatic --noinput && python manage.py migrate`
 
