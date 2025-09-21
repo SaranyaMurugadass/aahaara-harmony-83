@@ -2,19 +2,24 @@
 
 ## Common Build Issues and Solutions
 
-### 1. **psycopg2-binary Installation Error**
+### 1. **Package Installation Errors**
 
-**Error**: `Error: pg_config executable not found`
+**Error**: `KeyError: '__version__'` or `Getting requirements to build wheel: finished with status 'error'`
 
-**Solution**: This is a Windows-specific issue. The `psycopg2-binary` package works fine on Linux (Render's environment).
+**Solution**: This is often caused by package version compatibility issues with Python 3.13.
+
+**For Render Deployment**: 
+1. **Try the fallback build script**: The updated `build.sh` now tries multiple requirements files
+2. **Use basic requirements**: If full requirements fail, try `requirements-basic.txt`
+3. **Use minimal requirements**: As a last resort, try `requirements-minimal.txt`
+4. **Use simple build script**: Try `build-simple.sh` which only installs essential packages
 
 **For Local Development on Windows**:
+
 ```bash
 # Use the development requirements file
 pip install -r requirements-dev.txt
 ```
-
-**For Render Deployment**: The main `requirements.txt` will work fine on Render's Linux environment.
 
 ### 2. **realtime Package Version Error**
 
@@ -27,6 +32,7 @@ pip install -r requirements-dev.txt
 **Error**: Build script fails during dependency installation
 
 **Solution**: The updated `build.sh` now includes:
+
 - Pip upgrade before installation
 - Retry logic with `--no-cache-dir` flag
 - Better error handling and logging
@@ -38,6 +44,7 @@ pip install -r requirements-dev.txt
 **Solution**: Ensure all required environment variables are set in Render dashboard:
 
 **Required Variables**:
+
 ```
 DJANGO_SETTINGS_MODULE=aahaara_backend.settings_production
 SECRET_KEY=your-super-secret-key-here
@@ -52,7 +59,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 **Error**: `django.db.utils.OperationalError: could not connect to server`
 
-**Solution**: 
+**Solution**:
+
 1. Verify `DATABASE_URL` is correct
 2. Check if PostgreSQL service is running on Render
 3. Ensure database credentials are properly formatted
@@ -68,6 +76,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 **Error**: `Access to fetch at 'https://your-backend.onrender.com' from origin 'https://your-frontend.onrender.com' has been blocked by CORS policy`
 
 **Solution**: Update CORS settings in production:
+
 ```python
 CORS_ALLOWED_ORIGINS = [
     "https://your-frontend-app.onrender.com",
@@ -78,22 +87,25 @@ CORS_ALLOWED_ORIGINS = [
 ## Testing Your Deployment
 
 ### 1. **Health Check**
+
 Visit: `https://your-app.onrender.com/api/health/`
 
 Expected response:
+
 ```json
 {
-    "status": "healthy",
-    "timestamp": "2025-01-21T...",
-    "version": "1.0.0",
-    "services": {
-        "database": "healthy",
-        "environment": "healthy"
-    }
+  "status": "healthy",
+  "timestamp": "2025-01-21T...",
+  "version": "1.0.0",
+  "services": {
+    "database": "healthy",
+    "environment": "healthy"
+  }
 }
 ```
 
 ### 2. **API Endpoints Test**
+
 ```bash
 # Test basic API
 curl https://your-app.onrender.com/api/
@@ -105,6 +117,7 @@ curl -X POST https://your-app.onrender.com/api/auth/login/ \
 ```
 
 ### 3. **Database Test**
+
 ```bash
 # Test database connection
 curl https://your-app.onrender.com/api/patients/
@@ -113,25 +126,31 @@ curl https://your-app.onrender.com/api/patients/
 ## Render-Specific Issues
 
 ### 1. **Build Timeout**
+
 **Error**: Build process times out
 
-**Solution**: 
+**Solution**:
+
 - Render free tier has build time limits
 - Consider upgrading to paid plan for faster builds
 - Optimize requirements.txt to only include necessary packages
 
 ### 2. **Memory Issues**
+
 **Error**: Out of memory during build
 
 **Solution**:
+
 - Remove unnecessary packages from requirements.txt
 - Use `--no-cache-dir` flag in pip install
 - Consider upgrading to paid plan
 
 ### 3. **Service Sleep**
+
 **Error**: Service appears to be sleeping
 
-**Solution**: 
+**Solution**:
+
 - Free tier services sleep after 15 minutes of inactivity
 - First request after sleep may take 30+ seconds
 - Consider upgrading to paid plan to prevent sleeping
@@ -139,6 +158,7 @@ curl https://your-app.onrender.com/api/patients/
 ## Local Development Setup
 
 ### Windows Users:
+
 ```bash
 # Install development requirements
 pip install -r requirements-dev.txt
@@ -154,6 +174,7 @@ python manage.py runserver
 ```
 
 ### Linux/Mac Users:
+
 ```bash
 # Install requirements
 pip install -r requirements.txt
@@ -179,18 +200,21 @@ python manage.py runserver
 ## Quick Fixes
 
 ### If Build Fails:
+
 1. Check the build logs in Render dashboard
 2. Verify all environment variables are set
 3. Ensure requirements.txt has correct package versions
 4. Try redeploying with a clean build
 
 ### If Service Won't Start:
+
 1. Check the service logs
 2. Verify `DJANGO_SETTINGS_MODULE` is set correctly
 3. Ensure `SECRET_KEY` is provided
 4. Check database connection
 
 ### If API Returns 500 Errors:
+
 1. Check service logs for specific error messages
 2. Verify database is accessible
 3. Check if all required environment variables are set
