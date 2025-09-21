@@ -125,3 +125,4 @@ class FoodItem(models.Model):
         """Get formatted guna for display"""
         return ', '.join(self.guna) if self.guna else 'Not specified'
 
+

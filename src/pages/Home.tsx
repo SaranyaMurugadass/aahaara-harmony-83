@@ -1,8 +1,24 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { Users, Stethoscope, Leaf, Heart, ArrowRight, Star, Shield, Zap, CheckCircle } from "lucide-react";
+import {
+  Users,
+  Stethoscope,
+  Leaf,
+  Heart,
+  ArrowRight,
+  Star,
+  Shield,
+  Zap,
+  CheckCircle,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import heroImage from "@/assets/hero-ayurveda.jpg";
 
@@ -14,21 +30,24 @@ const Home = () => {
     {
       icon: Heart,
       title: "Holistic Health Analysis",
-      description: "Comprehensive Prakriti and health assessments based on traditional Ayurvedic principles",
+      description:
+        "Comprehensive Prakriti and health assessments based on traditional Ayurvedic principles",
       color: "text-red-500",
       bgColor: "bg-red-50",
     },
     {
       icon: Leaf,
       title: "Personalized Diet Plans",
-      description: "AI-powered diet chart generation tailored to individual dosha constitution and health needs",
+      description:
+        "AI-powered diet chart generation tailored to individual dosha constitution and health needs",
       color: "text-green-500",
       bgColor: "bg-green-50",
     },
     {
       icon: Users,
       title: "Practice Management",
-      description: "Complete patient management system with food database and automated reminders",
+      description:
+        "Complete patient management system with food database and automated reminders",
       color: "text-blue-500",
       bgColor: "bg-blue-50",
     },
@@ -45,19 +64,22 @@ const Home = () => {
     {
       name: "Dr. Priya Sharma",
       role: "Ayurvedic Practitioner",
-      content: "Aahaara360 has revolutionized my practice. The AI-powered diet chart generation saves me hours every day.",
+      content:
+        "Aahaara360 has revolutionized my practice. The AI-powered diet chart generation saves me hours every day.",
       rating: 5,
     },
     {
       name: "Dr. Rahul Patel",
       role: "Nutrition Specialist",
-      content: "The comprehensive patient management system helps me track patient progress effectively.",
+      content:
+        "The comprehensive patient management system helps me track patient progress effectively.",
       rating: 5,
     },
     {
       name: "Dr. Anita Singh",
       role: "General Practitioner",
-      content: "The food database with dosha effects is incredibly detailed and accurate.",
+      content:
+        "The food database with dosha effects is incredibly detailed and accurate.",
       rating: 5,
     },
   ];
@@ -82,7 +104,13 @@ const Home = () => {
                   Welcome, {user?.first_name}
                 </Badge>
                 <Button
-                  onClick={() => navigate(user?.role === 'doctor' ? '/doctor-dashboard' : '/patient-dashboard')}
+                  onClick={() =>
+                    navigate(
+                      user?.role === "doctor"
+                        ? "/doctor-dashboard"
+                        : "/patient-dashboard"
+                    )
+                  }
                   className="bg-gradient-to-r from-primary to-secondary hover:opacity-90"
                 >
                   Go to Dashboard
@@ -90,8 +118,12 @@ const Home = () => {
               </div>
             ) : (
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm">About</Button>
-                <Button variant="outline" size="sm">Contact</Button>
+                <Button variant="outline" size="sm">
+                  About
+                </Button>
+                <Button variant="outline" size="sm">
+                  Contact
+                </Button>
               </div>
             )}
           </div>
@@ -115,49 +147,67 @@ const Home = () => {
                 <br />
                 <span className="text-foreground">Ayurvedic Practice</span>
                 <br />
-                <span className="text-muted-foreground text-3xl lg:text-4xl">Management</span>
+                <span className="text-muted-foreground text-3xl lg:text-4xl">
+                  Management
+                </span>
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
-                Cloud-Based Practice Management & Nutrient Analysis Software for Ayurvedic Dietitians,
-                Tailored for Ayurveda-Focused Diet Plans
+                Cloud-Based Practice Management & Nutrient Analysis Software for
+                Ayurvedic Dietitians, Tailored for Ayurveda-Focused Diet Plans
               </p>
             </div>
 
             {/* Login Options */}
             {!isAuthenticated && (
               <div className="grid sm:grid-cols-2 gap-6">
-                <Card className="group hover:shadow-warm transition-all duration-300 cursor-pointer border-primary/20 hover:border-primary/40"
-                  onClick={() => navigate('/patient-login')}>
+                <Card
+                  className="group hover:shadow-warm transition-all duration-300 cursor-pointer border-primary/20 hover:border-primary/40"
+                  onClick={() => navigate("/patient-login")}
+                >
                   <CardContent className="p-6 text-center space-y-4">
                     <div className="w-16 h-16 mx-auto rounded-full bg-gradient-healing flex items-center justify-center">
                       <Users className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-foreground">Patient Login</h3>
+                      <h3 className="text-xl font-semibold text-foreground">
+                        Patient Login
+                      </h3>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Access your personalized diet plans and track your wellness journey
+                        Access your personalized diet plans and track your
+                        wellness journey
                       </p>
                     </div>
-                    <Button className="w-full bg-gradient-healing hover:opacity-90 border-0" size="lg">
+                    <Button
+                      className="w-full bg-gradient-healing hover:opacity-90 border-0"
+                      size="lg"
+                    >
                       Continue as Patient
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </CardContent>
                 </Card>
 
-                <Card className="group hover:shadow-warm transition-all duration-300 cursor-pointer border-primary/20 hover:border-primary/40"
-                  onClick={() => navigate('/doctor-login')}>
+                <Card
+                  className="group hover:shadow-warm transition-all duration-300 cursor-pointer border-primary/20 hover:border-primary/40"
+                  onClick={() => navigate("/doctor-login")}
+                >
                   <CardContent className="p-6 text-center space-y-4">
                     <div className="w-16 h-16 mx-auto rounded-full bg-gradient-primary flex items-center justify-center">
                       <Stethoscope className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-foreground">Dietitian Login</h3>
+                      <h3 className="text-xl font-semibold text-foreground">
+                        Dietitian Login
+                      </h3>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Manage patients, create diet plans, and analyze health data
+                        Manage patients, create diet plans, and analyze health
+                        data
                       </p>
                     </div>
-                    <Button className="w-full bg-gradient-primary hover:opacity-90 border-0" size="lg">
+                    <Button
+                      className="w-full bg-gradient-primary hover:opacity-90 border-0"
+                      size="lg"
+                    >
                       Continue as Dietitian
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
@@ -184,8 +234,12 @@ const Home = () => {
             <Card key={index} className="text-center p-6">
               <CardContent className="space-y-2">
                 <stat.icon className="w-8 h-8 text-primary mx-auto" />
-                <div className="text-2xl font-bold text-primary">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <div className="text-2xl font-bold text-primary">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {stat.label}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -196,14 +250,20 @@ const Home = () => {
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold mb-4">Why Choose Aahaara360?</h3>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Our platform combines traditional Ayurvedic wisdom with modern technology to provide comprehensive healthcare solutions.
+              Our platform combines traditional Ayurvedic wisdom with modern
+              technology to provide comprehensive healthcare solutions.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="p-6 hover:shadow-lg transition-shadow">
+              <Card
+                key={index}
+                className="p-6 hover:shadow-lg transition-shadow"
+              >
                 <CardContent className="space-y-4">
-                  <div className={`w-12 h-12 rounded-lg ${feature.bgColor} flex items-center justify-center`}>
+                  <div
+                    className={`w-12 h-12 rounded-lg ${feature.bgColor} flex items-center justify-center`}
+                  >
                     <feature.icon className={`w-6 h-6 ${feature.color}`} />
                   </div>
                   <h4 className="text-xl font-semibold">{feature.title}</h4>
@@ -228,13 +288,20 @@ const Home = () => {
                 <CardContent className="space-y-4">
                   <div className="flex items-center space-x-1">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <Star
+                        key={i}
+                        className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                      />
                     ))}
                   </div>
-                  <p className="text-muted-foreground italic">"{testimonial.content}"</p>
+                  <p className="text-muted-foreground italic">
+                    "{testimonial.content}"
+                  </p>
                   <div>
                     <div className="font-semibold">{testimonial.name}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {testimonial.role}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -245,15 +312,18 @@ const Home = () => {
         {/* CTA Section */}
         {!isAuthenticated && (
           <div className="text-center bg-gradient-to-r from-primary/10 to-secondary/10 rounded-3xl p-12">
-            <h3 className="text-3xl font-bold mb-4">Ready to Transform Your Practice?</h3>
+            <h3 className="text-3xl font-bold mb-4">
+              Ready to Transform Your Practice?
+            </h3>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join hundreds of healthcare professionals who trust Aahaara360 for their practice management needs.
+              Join hundreds of healthcare professionals who trust Aahaara360 for
+              their practice management needs.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
                 className="bg-gradient-primary hover:opacity-90"
-                onClick={() => navigate('/doctor-login')}
+                onClick={() => navigate("/doctor-login")}
               >
                 <Stethoscope className="w-5 h-5 mr-2" />
                 Start as Doctor
@@ -261,7 +331,7 @@ const Home = () => {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => navigate('/patient-login')}
+                onClick={() => navigate("/patient-login")}
               >
                 <Users className="w-5 h-5 mr-2" />
                 Join as Patient

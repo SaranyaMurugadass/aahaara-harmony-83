@@ -1,16 +1,57 @@
-"""
-URL patterns for patients app
-"""
 from django.urls import path
-from . import views
+from .views import (
+    patient_list,
+    patient_detail,
+    create_patient,
+    patient_summary,
+    assign_doctor,
+    prakriti_analysis_list_create,
+    disease_analysis_list_create,
+    consultation_list_create,
+    PatientReportListCreateView,
+    PatientReportDetailView,
+    PatientReportSummaryListView,
+    upload_patient_report,
+    download_patient_report,
+    get_patient_reports,
+    get_report_stats,
+    ReportCommentListCreateView,
+    ReportShareListCreateView
+)
 
 urlpatterns = [
-    path('', views.patient_list, name='patient_list'),
-    path('create/', views.create_patient, name='create_patient'),
-    path('<uuid:pk>/', views.patient_detail, name='patient_detail'),
-    path('<uuid:patient_id>/summary/', views.patient_summary, name='patient_summary'),
-    path('<uuid:patient_id>/assign-doctor/', views.assign_doctor, name='assign_doctor'),
-    path('<uuid:patient_id>/prakriti/', views.prakriti_analysis_list_create, name='prakriti_analysis'),
-    path('<uuid:patient_id>/diseases/', views.disease_analysis_list_create, name='disease_analysis'),
-    path('<uuid:patient_id>/consultations/', views.consultation_list_create, name='consultations'),
+    # Main patient endpoints
+    path('', patient_list, name='patient-list'),
+    path('<int:pk>/', patient_detail, name='patient-detail'),
+    path('create/', create_patient, name='create-patient'),
+    path('<uuid:patient_id>/summary/', patient_summary, name='patient-summary'),
+    path('<uuid:patient_id>/assign-doctor/', assign_doctor, name='assign-doctor'),
+    
+    # Patient analysis endpoints
+    path('<uuid:patient_id>/prakriti/', prakriti_analysis_list_create, name='prakriti-analysis'),
+    path('<uuid:patient_id>/diseases/', disease_analysis_list_create, name='disease-analysis'),
+    path('<uuid:patient_id>/consultations/', consultation_list_create, name='consultations'),
+    
+    # Report CRUD endpoints
+    path('reports/', PatientReportListCreateView.as_view(), name='report-list-create'),
+    path('reports/summaries/', PatientReportSummaryListView.as_view(), name='report-summaries'),
+    path('reports/<uuid:id>/', PatientReportDetailView.as_view(), name='report-detail'),
+    path('reports/<uuid:id>/update/', PatientReportDetailView.as_view(), name='report-update'),
+    path('reports/<uuid:id>/delete/', PatientReportDetailView.as_view(), name='report-delete'),
+    
+    # Report file operations
+    path('reports/upload/', upload_patient_report, name='report-upload'),
+    path('reports/<uuid:report_id>/download/', download_patient_report, name='report-download'),
+    
+    # Patient-specific endpoints
+    path('reports/patient/<uuid:patient_id>/', get_patient_reports, name='patient-reports'),
+    
+    # Statistics endpoint
+    path('reports/stats/', get_report_stats, name='report-stats'),
+    
+    # Report comments
+    path('reports/<uuid:report_id>/comments/', ReportCommentListCreateView.as_view(), name='report-comments'),
+    
+    # Report sharing
+    path('reports/<uuid:report_id>/shares/', ReportShareListCreateView.as_view(), name='report-shares'),
 ]

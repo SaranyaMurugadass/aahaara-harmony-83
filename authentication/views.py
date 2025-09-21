@@ -216,6 +216,7 @@ def user_profile(request):
         unified_patient = user.unified_patient.first()
         if unified_patient:
             profile_data['patient_data'] = {
+                'id': unified_patient.id,  # This is the UnifiedPatient.id needed for diet charts
                 'patient_id': unified_patient.patient_id,
                 'age': unified_patient.age,
                 'bmi': unified_patient.bmi,

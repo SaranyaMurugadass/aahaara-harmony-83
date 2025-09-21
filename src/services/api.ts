@@ -60,7 +60,17 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData = {};
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            errorData = await response.json();
+          } else {
+            errorData = { error: await response.text() };
+          }
+        } catch (e) {
+          errorData = { error: "Unknown error occurred" };
+        }
         console.error("❌ API Error Response:", errorData);
 
         // Handle specific error cases
@@ -101,7 +111,17 @@ class ApiClient {
         );
       }
 
-      const responseData = await response.json();
+      let responseData;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          responseData = await response.json();
+        } else {
+          responseData = await response.text();
+        }
+      } catch (e) {
+        responseData = await response.text();
+      }
       console.log("✅ API Success Response:", responseData);
       return responseData;
     } catch (error: any) {
@@ -379,19 +399,6 @@ class ApiClient {
     return this.request("/diet-charts/food-database/");
   }
 
-  async getFoodItems(params?: {
-    search?: string;
-    category?: string;
-    dosha?: string;
-    effect?: string;
-  }) {
-    const queryParams = new URLSearchParams(params).toString();
-    const endpoint = queryParams
-      ? `/diet-charts/foods/?${queryParams}`
-      : "/diet-charts/foods/";
-    return this.request(endpoint);
-  }
-
   async getDietCharts() {
     return this.request("/diet-charts/charts/");
   }
@@ -425,6 +432,30 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  async saveDietChart(data: {
+    patient_id: string;
+    patient_name: string;
+    prakriti?: string;
+    total_calories: number;
+    chart_data: any;
+    created_by: string;
+    status: string;
+    created_at: string;
+  }) {
+    return this.request("/diet-charts/save/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPatientDietCharts(patientId: string) {
+    return this.request(`/diet-charts/patient/${patientId}/`);
+  }
+
+  async getPatientLatestDietChart(patientId: string) {
+    return this.request(`/diet-charts/patient/${patientId}/latest/`);
   }
 
   async getMealPlans(dietChartId: string) {
@@ -576,6 +607,120 @@ class ApiClient {
 
   async getFoodStats() {
     return this.request("/foods/stats/");
+  }
+
+  // Patient Reports API
+  async uploadPatientReport(
+    file: File,
+    patientId: string,
+    reportType: string,
+    title?: string,
+    description?: string,
+    notes?: string,
+    reportDate?: string,
+    isUrgent?: boolean
+  ) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("patient_id", patientId);
+    formData.append("report_type", reportType);
+    if (title) formData.append("title", title);
+    if (description) formData.append("description", description);
+    if (notes) formData.append("notes", notes);
+    if (reportDate) formData.append("report_date", reportDate);
+    if (isUrgent !== undefined)
+      formData.append("is_urgent", isUrgent.toString());
+
+    return this.request("/patients/reports/upload/", {
+      method: "POST",
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
+  async getPatientReports(patientId: string) {
+    return this.request(`/patients/reports/patient/${patientId}/`);
+  }
+
+  async getAllReports() {
+    return this.request("/patients/reports/");
+  }
+
+  async getReport(reportId: string) {
+    return this.request(`/patients/reports/${reportId}/`);
+  }
+
+  async updateReport(reportId: string, data: any) {
+    return this.request(`/patients/reports/${reportId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteReport(reportId: string) {
+    return this.request(`/patients/reports/${reportId}/`, {
+      method: "DELETE",
+    });
+  }
+
+  async downloadReport(reportId: string) {
+    const response = await fetch(
+      `${this.baseURL}/patients/reports/${reportId}/download/`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Token ${this.getToken()}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.statusText}`);
+    }
+
+    return response.blob();
+  }
+
+  async getReportStats() {
+    return this.request("/patients/reports/stats/");
+  }
+
+  async getReportComments(reportId: string) {
+    return this.request(`/patients/reports/${reportId}/comments/`);
+  }
+
+  async addReportComment(
+    reportId: string,
+    comment: string,
+    isInternal: boolean = true
+  ) {
+    return this.request(`/patients/reports/${reportId}/comments/`, {
+      method: "POST",
+      body: JSON.stringify({
+        report: reportId,
+        comment,
+        is_internal: isInternal,
+      }),
+    });
+  }
+
+  async shareReport(
+    reportId: string,
+    recipientEmail: string,
+    recipientName?: string,
+    message?: string,
+    expiresAt?: string
+  ) {
+    return this.request(`/patients/reports/${reportId}/shares/`, {
+      method: "POST",
+      body: JSON.stringify({
+        report: reportId,
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
+        message,
+        expires_at: expiresAt,
+      }),
+    });
   }
 }
 
@@ -769,4 +914,65 @@ export interface MealItem {
   quantity: string;
   unit: string;
   notes: string;
+}
+
+// Patient Report Types
+export interface PatientReport {
+  id: string;
+  patient: string;
+  patient_name: string;
+  uploaded_by: string;
+  uploaded_by_name: string;
+  report_type: string;
+  title: string;
+  description?: string;
+  notes?: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  file_size_mb: number;
+  file_type: string;
+  public_url?: string;
+  report_date?: string;
+  status: "pending" | "reviewed" | "archived";
+  is_urgent: boolean;
+  is_recent: boolean;
+  comments_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportComment {
+  id: string;
+  report: string;
+  author: string;
+  author_name: string;
+  comment: string;
+  is_internal: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportShare {
+  id: string;
+  report: string;
+  shared_by: string;
+  shared_by_name: string;
+  recipient_email: string;
+  recipient_name?: string;
+  message?: string;
+  access_token: string;
+  expires_at: string;
+  is_accessed: boolean;
+  accessed_at?: string;
+  is_expired: boolean;
+  created_at: string;
+}
+
+export interface ReportStats {
+  total_reports: number;
+  pending_reports: number;
+  urgent_reports: number;
+  recent_reports: number;
+  reports_by_type: Record<string, number>;
 }

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import html2pdf from "html2pdf.js";
 import {
   Card,
   CardContent,
@@ -316,9 +317,14 @@ const GenerateDietChart = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Check if this is a patient view only mode
-  const { patient: patientFromState, viewOnly } = location.state || {};
+  const {
+    patient: patientFromState,
+    dietChart: dietChartFromState,
+    viewOnly,
+  } = location.state || {};
 
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -326,63 +332,61 @@ const GenerateDietChart = () => {
     patientFromState || null
   );
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentView, setCurrentView] = useState(viewOnly ? "final" : "select"); // select, generating, edit, final
+  const [currentView, setCurrentView] = useState(
+    dietChartFromState ? "edit" : "select"
+  ); // select, generating, edit, final
   const [generatedChart, setGeneratedChart] = useState(
-    viewOnly ? mockDietChart : null
+    dietChartFromState?.daily_meals || null
   );
+
+  // Debug logging
+  console.log("🔍 GenerateDietChart Debug:", {
+    viewOnly,
+    dietChartFromState,
+    currentView,
+    generatedChart: !!generatedChart,
+    patientFromState,
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingMeal, setEditingMeal] = useState(null);
   const [customMeal, setCustomMeal] = useState("");
 
-  // Function to load patients from API
-  const loadPatients = async () => {
-    try {
-      setLoading(true);
-      console.log("🔍 Starting to load patients for diet chart...");
-      const response = await apiClient.getPatients();
-      console.log("🔍 Full API response:", response);
-      console.log("🔍 Response results:", response.results);
-      console.log("🔍 Number of patients:", response.results?.length || 0);
-
-      if (response.results && response.results.length > 0) {
-        console.log("🔍 First patient structure:", response.results[0]);
-      }
-
-      // Transform the response to match the expected format
-      const transformedPatients =
-        response.results?.map((patient: any) => ({
-          patient: {
-            id: patient.id,
-            user_name: patient.user_name,
-            date_of_birth: patient.date_of_birth,
-            gender: patient.gender,
-            height: patient.height,
-            weight: patient.weight,
-            blood_type: patient.blood_type,
-            location: patient.location,
-            phone_number: patient.phone_number,
-          },
-          prakriti_analysis: patient.prakriti_analysis || null,
-          diseases: patient.active_diseases || [],
-        })) || [];
-
-      setPatients(transformedPatients);
-    } catch (error) {
-      console.error("❌ Error loading patients:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load patients. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load patients from API
+  // Load patients from API (only if not in view-only mode)
   useEffect(() => {
+    // Skip loading patients if we're in view-only mode (patient viewing their own chart)
+    if (viewOnly) {
+      setLoading(false);
+      return;
+    }
+
+    const loadPatients = async () => {
+      try {
+        setLoading(true);
+        console.log("🔍 Starting to load patients for diet chart...");
+        const response = await apiClient.getPatients();
+        console.log("🔍 Full API response:", response);
+        console.log("🔍 Response results:", response.results);
+        console.log("🔍 Number of patients:", response.results?.length || 0);
+
+        if (response.results && response.results.length > 0) {
+          console.log("🔍 First patient structure:", response.results[0]);
+        }
+
+        setPatients(response.results || []);
+      } catch (error) {
+        console.error("❌ Error loading patients:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load patients. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadPatients();
-  }, []);
+  }, [viewOnly]);
 
   const filteredPatients = patients.filter((patient) => {
     // Add safety checks to prevent undefined errors
@@ -404,47 +408,15 @@ const GenerateDietChart = () => {
   console.log("🔍 Filtered patients:", filteredPatients.length);
   console.log("🔍 Search term:", searchTerm);
 
-  const handleSelectPatient = async (patient) => {
+  const handleSelectPatient = (patient) => {
     setSelectedPatient(patient);
-
-    // Check if we need to load additional data
-    if (!patient.prakriti_analysis || !patient.diseases) {
-      try {
-        console.log(
-          "🔍 Loading additional patient data for:",
-          patient.patient.id
-        );
-        const summary = await apiClient.getPatientSummary(patient.patient.id);
-        console.log("🔍 Patient summary:", summary);
-
-        // Update the selected patient with the summary data
-        const updatedPatient = {
-          ...patient,
-          prakriti_analysis:
-            patient.prakriti_analysis || summary.prakriti_analysis,
-          diseases: patient.diseases || summary.active_diseases,
-        };
-
-        setSelectedPatient(updatedPatient);
-      } catch (error) {
-        console.error("❌ Error loading patient summary:", error);
-        toast({
-          title: "Warning",
-          description: "Patient selected but some data could not be loaded.",
-          variant: "destructive",
-        });
-      }
-    }
-
     setCurrentView("generating");
   };
 
   // Check if both analyses are completed
-  const isPrakritiCompleted =
-    selectedPatient?.prakriti_analysis &&
-    selectedPatient.prakriti_analysis.status === "completed";
+  const isPrakritiCompleted = location.state?.prakritiAnalysis;
   const isDiseaseAnalysisCompleted =
-    selectedPatient?.diseases && selectedPatient.diseases.length > 0;
+    location.state?.diseases && location.state.diseases.length > 0;
   const canGenerateChart = isPrakritiCompleted && isDiseaseAnalysisCompleted;
 
   const handleGenerateChart = async () => {
@@ -468,16 +440,19 @@ const GenerateDietChart = () => {
 
     try {
       // Call the real API to generate diet chart
-      const response = await apiClient.generateDietChart({
-        patient_id: selectedPatient.patient?.id || selectedPatient.id,
-        chart_name: `${
-          selectedPatient.patient?.user_name || selectedPatient.name
-        } - 7 Day Diet Chart`,
-        chart_type: "7_day",
-        start_date: new Date().toISOString().split("T")[0],
-        end_date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
+      const response = await apiClient.request("/diet-charts/generate/", {
+        method: "POST",
+        body: JSON.stringify({
+          patient_id: selectedPatient.patient?.id || selectedPatient.id,
+          chart_name: `${
+            selectedPatient.patient?.user_name || selectedPatient.name
+          } - 7 Day Diet Chart`,
+          chart_type: "7_day",
+          start_date: new Date().toISOString().split("T")[0],
+          end_date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+        }),
       });
 
       console.log("🔍 Generated diet chart response:", response);
@@ -527,35 +502,100 @@ const GenerateDietChart = () => {
     }, 2000);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    console.log("🔍 PDF Export Debug:", {
+      contentRef: contentRef.current,
+      currentView,
+      viewOnly,
+      generatedChart: !!generatedChart,
+    });
+
+    if (!contentRef.current) {
+      console.error("❌ contentRef.current is null");
+      toast({
+        title: "Export Failed",
+        description: "Content not ready for export. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Exporting PDF",
       description: "Generating diet chart PDF for download...",
     });
 
-    setTimeout(() => {
+    try {
+      // Check if html2pdf is available
+      if (typeof html2pdf === "undefined") {
+        throw new Error("html2pdf library not loaded");
+      }
+
+      // Temporarily hide buttons for PDF generation
+      const buttons = contentRef.current.querySelectorAll(".no-print");
+      const originalStyles: string[] = [];
+
+      buttons.forEach((button) => {
+        const element = button as HTMLElement;
+        originalStyles.push(element.style.display);
+        element.style.display = "none";
+      });
+
+      // Wait a bit for DOM to update and ensure content is rendered
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Double-check that content is still available
+      if (!contentRef.current) {
+        throw new Error("Content reference lost during processing");
+      }
+
+      const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: `${(
+          selectedPatient?.patient?.user_name ||
+          selectedPatient?.name ||
+          "patient"
+        ).replace(/\s+/g, "_")}_diet_chart.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+        },
+        jsPDF: {
+          unit: "in",
+          format: "a4",
+          orientation: "portrait",
+        },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      };
+
+      // Generate PDF
+      await html2pdf().set(opt).from(contentRef.current).save();
+
+      // Restore button visibility
+      buttons.forEach((button, index) => {
+        const element = button as HTMLElement;
+        element.style.display = originalStyles[index];
+      });
+
       toast({
-        title: "PDF Ready!",
+        title: "PDF Exported Successfully!",
         description: `Diet chart for ${
           selectedPatient?.patient?.user_name || selectedPatient?.name
         } exported successfully.`,
       });
-
-      // Create a mock PDF download
-      const element = document.createElement("a");
-      element.setAttribute(
-        "download",
-        `${(
-          selectedPatient?.patient?.user_name ||
-          selectedPatient?.name ||
-          "patient"
-        ).replace(" ", "_")}_diet_chart.pdf`
-      );
-      element.style.display = "none";
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-    }, 2000);
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast({
+        title: "Export Failed",
+        description: `Failed to export PDF: ${
+          error.message || "Unknown error"
+        }. Please try again.`,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditMeal = (day, meal, currentMeal) => {
@@ -647,10 +687,6 @@ const GenerateDietChart = () => {
     const age = calculateAge(patient.patient.date_of_birth);
     const dominantDosha = getDominantDosha(patient.prakriti_analysis);
     const targetCalories = calculateTargetCalories(patient.patient);
-    const hasPrakritiAnalysis =
-      patient.prakriti_analysis &&
-      patient.prakriti_analysis.status === "completed";
-    const hasDiseaseAnalysis = patient.diseases && patient.diseases.length > 0;
 
     const isSelected = selectedPatient?.patient?.id === patient.patient.id;
 
@@ -668,31 +704,16 @@ const GenerateDietChart = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-healing flex items-center justify-center">
                 <User className="w-6 h-6 text-white" />
               </div>
-              <div className="flex-1">
+              <div>
                 <h3 className="font-semibold text-lg">
                   {patient.patient.user_name}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {age} years • {patient.patient.gender}
-                  {patient.patient.location && ` • ${patient.patient.location}`}
                 </p>
                 <div className="flex space-x-2 mt-2">
                   <Badge variant="secondary">Dominant: {dominantDosha}</Badge>
                   <Badge variant="outline">{targetCalories} cal/day</Badge>
-                </div>
-                <div className="flex space-x-2 mt-2">
-                  <Badge
-                    variant={hasPrakritiAnalysis ? "default" : "destructive"}
-                    className="text-xs"
-                  >
-                    Prakriti: {hasPrakritiAnalysis ? "✓" : "✗"}
-                  </Badge>
-                  <Badge
-                    variant={hasDiseaseAnalysis ? "default" : "destructive"}
-                    className="text-xs"
-                  >
-                    Disease: {hasDiseaseAnalysis ? "✓" : "✗"}
-                  </Badge>
                 </div>
               </div>
             </div>
@@ -741,13 +762,15 @@ const GenerateDietChart = () => {
               <Badge variant={food.suitable ? "default" : "destructive"}>
                 {food.calories} cal
               </Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleEditMeal(dayName, meal, food)}
-              >
-                <Edit className="w-3 h-3" />
-              </Button>
+              {!viewOnly && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleEditMeal(dayName, meal, food)}
+                >
+                  <Edit className="w-3 h-3" />
+                </Button>
+              )}
             </div>
           </div>
         ))}
@@ -775,17 +798,15 @@ const GenerateDietChart = () => {
               </div>
 
               <h2 className="text-2xl font-bold mb-2">
-                {selectedPatient?.patient?.user_name || selectedPatient?.name}
+                {selectedPatient?.name}
               </h2>
               <div className="flex justify-center space-x-4 mb-6">
                 <Badge variant="secondary">
-                  Dominant:{" "}
-                  {selectedPatient?.prakriti_analysis?.primary_dosha_display ||
-                    "Not Analyzed"}
+                  Dominant: {selectedPatient?.dominantDosha}
                 </Badge>
+
                 <Badge variant="outline">
-                  Target: {selectedPatient?.targetCalories || "Calculating..."}{" "}
-                  cal/day
+                  Target: {selectedPatient?.targetCalories} cal/day
                 </Badge>
               </div>
 
@@ -801,12 +822,7 @@ const GenerateDietChart = () => {
                     ></div>
                     <span className="text-sm font-medium">
                       Prakriti Analysis:{" "}
-                      {selectedPatient?.prakriti_analysis
-                        ? selectedPatient.prakriti_analysis.status ===
-                          "completed"
-                          ? "Completed"
-                          : selectedPatient.prakriti_analysis.status
-                        : "Not Available"}
+                      {isPrakritiCompleted ? "Completed" : "Pending"}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -819,33 +835,10 @@ const GenerateDietChart = () => {
                     ></div>
                     <span className="text-sm font-medium">
                       Disease Analysis:{" "}
-                      {isDiseaseAnalysisCompleted
-                        ? `Completed (${selectedPatient.diseases.length} conditions)`
-                        : "Not Available"}
+                      {isDiseaseAnalysisCompleted ? "Completed" : "Pending"}
                     </span>
                   </div>
                 </div>
-                {selectedPatient?.prakriti_analysis && (
-                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      <strong>Prakriti Details:</strong>{" "}
-                      {selectedPatient.prakriti_analysis.primary_dosha_display}
-                      {selectedPatient.prakriti_analysis.secondary_dosha &&
-                        ` (Secondary: ${selectedPatient.prakriti_analysis.secondary_dosha})`}
-                    </p>
-                  </div>
-                )}
-                {selectedPatient?.diseases &&
-                  selectedPatient.diseases.length > 0 && (
-                    <div className="mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                      <p className="text-sm text-orange-800 dark:text-orange-200">
-                        <strong>Active Conditions:</strong>{" "}
-                        {selectedPatient.diseases
-                          .map((d) => d.disease_name)
-                          .join(", ")}
-                      </p>
-                    </div>
-                  )}
                 {!canGenerateChart && (
                   <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -922,7 +915,7 @@ const GenerateDietChart = () => {
     );
   }
 
-  if (currentView === "edit" && generatedChart) {
+  if (currentView === "edit" && (generatedChart || viewOnly)) {
     return (
       <div className="min-h-screen bg-gradient-earth">
         {/* Header */}
@@ -932,18 +925,26 @@ const GenerateDietChart = () => {
               <div>
                 <Button
                   variant="ghost"
-                  onClick={() => setCurrentView("select")}
+                  onClick={() =>
+                    navigate(
+                      viewOnly ? "/patient-dashboard" : "/doctor-dashboard"
+                    )
+                  }
                   className="mb-2"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Selection
+                  {viewOnly ? "Back to Dashboard" : "Back to Dashboard"}
                 </Button>
                 <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  7-Day Diet Chart -{" "}
-                  {selectedPatient?.patient?.user_name || selectedPatient?.name}
+                  {viewOnly ? "My 7-Day Diet Chart" : "7-Day Diet Chart - "}
+                  {!viewOnly &&
+                    (selectedPatient?.patient?.user_name ||
+                      selectedPatient?.name)}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Review and customize the AI-generated 7-day diet plan
+                  {viewOnly
+                    ? "Your personalized 7-day meal plan created by your doctor"
+                    : "Review and customize the AI-generated 7-day diet plan"}
                 </p>
               </div>
               <div className="flex space-x-2">
@@ -953,7 +954,7 @@ const GenerateDietChart = () => {
                     Regenerate
                   </Button>
                 )}
-                <Button onClick={handleExportPDF}>
+                <Button onClick={handleExportPDF} className="no-print">
                   <Download className="w-4 h-4 mr-2" />
                   {viewOnly ? "Download PDF" : "Export PDF"}
                 </Button>
@@ -962,7 +963,7 @@ const GenerateDietChart = () => {
           </div>
         </header>
 
-        <main className="container mx-auto px-6 py-8">
+        <main ref={contentRef} className="container mx-auto px-6 py-8">
           <Tabs defaultValue="day1" className="space-y-6">
             <TabsList className="grid grid-cols-7 w-full">
               {Array.from({ length: 7 }, (_, i) => (
@@ -972,11 +973,13 @@ const GenerateDietChart = () => {
               ))}
             </TabsList>
 
-            {Object.entries(mockDietChart).map(([day, dayData]) => (
-              <TabsContent key={day} value={day} className="space-y-4">
-                {renderDayChart(dayData, day)}
-              </TabsContent>
-            ))}
+            {Object.entries(generatedChart || mockDietChart).map(
+              ([day, dayData]) => (
+                <TabsContent key={day} value={day} className="space-y-4">
+                  {renderDayChart(dayData, day)}
+                </TabsContent>
+              )
+            )}
           </Tabs>
 
           {/* Manual Modification Dialog */}
@@ -1041,17 +1044,15 @@ const GenerateDietChart = () => {
                 {viewOnly ? "Back to Dashboard" : "Back to Dashboard"}
               </Button>
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                {viewOnly
-                  ? `Diet Chart - ${
-                      selectedPatient?.patient?.user_name ||
-                      selectedPatient?.name
-                    }`
-                  : "Generate 7-Day Diet Chart"}
+                {viewOnly ? "My 7-Day Diet Chart" : "7-Day Diet Chart - "}
+                {!viewOnly &&
+                  (selectedPatient?.patient?.user_name ||
+                    selectedPatient?.name)}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {viewOnly
-                  ? "Your personalized 7-day Ayurvedic meal plan"
-                  : "AI-powered automatic 7-day diet chart generation based on patient analysis"}
+                  ? "Your personalized 7-day meal plan created by your doctor"
+                  : "Review and customize the AI-generated 7-day diet plan"}
               </p>
             </div>
           </div>
@@ -1059,9 +1060,9 @@ const GenerateDietChart = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        {/* Search and Refresh */}
-        <div className="mb-8 flex justify-between items-center">
+      <main ref={contentRef} className="container mx-auto px-6 py-8">
+        {/* Search */}
+        <div className="mb-8">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
@@ -1071,15 +1072,6 @@ const GenerateDietChart = () => {
               className="pl-10"
             />
           </div>
-          <Button
-            variant="outline"
-            onClick={loadPatients}
-            disabled={loading}
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            <span>Refresh</span>
-          </Button>
         </div>
 
         {/* Patient Selection */}

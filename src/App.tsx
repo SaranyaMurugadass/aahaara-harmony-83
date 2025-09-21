@@ -75,7 +75,7 @@ const App = () => (
               <Route
                 path="/generate-diet-chart"
                 element={
-                  <ProtectedRoute allowedRoles={["doctor"]}>
+                  <ProtectedRoute allowedRoles={["doctor", "patient"]}>
                     <GenerateDietChart />
                   </ProtectedRoute>
                 }

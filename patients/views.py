@@ -2,20 +2,30 @@
 Views for patient management - Updated for unified structure
 """
 from rest_framework import generics, status, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .models import Patient, PrakritiAnalysis, DiseaseAnalysis, Consultation
+from .models import Patient, PrakritiAnalysis, DiseaseAnalysis, Consultation, PatientReport, ReportComment, ReportShare
 from .serializers import (
     PatientSerializer, 
     PrakritiAnalysisSerializer, 
     DiseaseAnalysisSerializer,
     ConsultationSerializer,
-    ConsultationCreateSerializer
+    ConsultationCreateSerializer,
+    PatientReportSerializer,
+    PatientReportCreateSerializer,
+    PatientReportUpdateSerializer,
+    PatientReportSummarySerializer,
+    ReportCommentSerializer,
+    ReportCommentCreateSerializer,
+    ReportShareSerializer,
+    ReportShareCreateSerializer
 )
 from authentication.models import User, UnifiedProfile, UnifiedPatient
 from authentication.supabase_service import supabase_service
+from authentication.storage_service import storage_service
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
@@ -572,3 +582,377 @@ def assign_doctor(request, patient_id):
         'message': 'Doctor assigned successfully',
         'patient': PatientSerializer(patient).data
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def upload_patient_report(request):
+    """Upload a patient report file to Supabase storage"""
+    try:
+        # Check if file is provided
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': 'No file provided'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        file = request.FILES['file']
+        patient_id = request.POST.get('patient_id')
+        report_type = request.POST.get('report_type')
+        title = request.POST.get('title', file.name)
+        description = request.POST.get('description', '')
+        notes = request.POST.get('notes', '')
+        report_date = request.POST.get('report_date')
+        is_urgent = request.POST.get('is_urgent', 'false').lower() == 'true'
+        
+        # Validate required fields
+        if not patient_id:
+            return Response(
+                {'error': 'Patient ID is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not report_type:
+            return Response(
+                {'error': 'Report type is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get patient
+        try:
+            patient = UnifiedPatient.objects.get(id=patient_id)
+        except UnifiedPatient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permissions
+        user = request.user
+        if user.role != 'doctor' and patient.user != user:
+            return Response(
+                {'error': 'Permission denied'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Read file content
+        file_content = file.read()
+        
+        # Upload to Supabase storage
+        upload_result = storage_service.upload_report_file(
+            file_content=file_content,
+            file_name=file.name,
+            patient_id=str(patient_id),
+            report_type=report_type,
+            file_type=file.content_type
+        )
+        
+        if not upload_result.get('success'):
+            return Response(
+                {'error': f'Upload failed: {upload_result.get("error")}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Create report record
+        report_data = {
+            'patient': patient_id,
+            'report_type': report_type,
+            'title': title,
+            'description': description,
+            'notes': notes,
+            'file_name': file.name,
+            'file_path': upload_result['file_path'],
+            'file_size': upload_result['file_size'],
+            'file_type': file.content_type,
+            'public_url': upload_result['public_url'],
+            'report_date': report_date,
+            'is_urgent': is_urgent
+        }
+        
+        serializer = PatientReportCreateSerializer(data=report_data)
+        if serializer.is_valid():
+            report = serializer.save(uploaded_by=user)
+            return Response(
+                PatientReportSerializer(report).data, 
+                status=status.HTTP_201_CREATED
+            )
+        else:
+            # If database save fails, clean up uploaded file
+            storage_service.delete_report_file(upload_result['file_path'])
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Report upload error: {e}")
+        return Response(
+            {'error': f'Upload failed: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# Report Views
+class PatientReportListCreateView(generics.ListCreateAPIView):
+    """List and create patient reports"""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'doctor':
+            return PatientReport.objects.all()
+        else:
+            return PatientReport.objects.filter(patient__user=user)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return PatientReportCreateSerializer
+        return PatientReportSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+
+
+class PatientReportDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete a patient report"""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'doctor':
+            return PatientReport.objects.all()
+        else:
+            return PatientReport.objects.filter(patient__user=user)
+    
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return PatientReportUpdateSerializer
+        return PatientReportSerializer
+
+
+class PatientReportSummaryListView(generics.ListAPIView):
+    """List patient report summaries (lightweight)"""
+    
+    serializer_class = PatientReportSummarySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'doctor':
+            return PatientReport.objects.all()
+        else:
+            return PatientReport.objects.filter(patient__user=user)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_patient_reports(request, patient_id):
+    """Get all reports for a specific patient"""
+    try:
+        user = request.user
+        
+        # Check permissions
+        if user.role != 'doctor':
+            # Patients can only access their own reports
+            try:
+                patient = UnifiedPatient.objects.get(id=patient_id, user=user)
+            except UnifiedPatient.DoesNotExist:
+                return Response(
+                    {'error': 'Patient not found or access denied'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            # Doctors can access any patient's reports
+            try:
+                patient = UnifiedPatient.objects.get(id=patient_id)
+            except UnifiedPatient.DoesNotExist:
+                return Response(
+                    {'error': 'Patient not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        reports = PatientReport.objects.filter(patient_id=patient_id).order_by('-created_at')
+        serializer = PatientReportSerializer(reports, many=True)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Get patient reports error: {e}")
+        return Response(
+            {'error': f'Failed to fetch reports: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_report_stats(request):
+    """Get statistics about patient reports"""
+    try:
+        user = request.user
+        
+        if user.role == 'doctor':
+            # Doctor can see all report stats
+            total_reports = PatientReport.objects.count()
+            pending_reports = PatientReport.objects.filter(status='pending').count()
+            urgent_reports = PatientReport.objects.filter(is_urgent=True).count()
+            
+            # Recent reports (last 30 days)
+            from django.utils import timezone
+            from datetime import timedelta
+            thirty_days_ago = timezone.now() - timedelta(days=30)
+            recent_reports = PatientReport.objects.filter(created_at__gte=thirty_days_ago).count()
+            
+            # Reports by type
+            reports_by_type = {}
+            for report_type, _ in PatientReport.REPORT_TYPE_CHOICES:
+                reports_by_type[report_type] = PatientReport.objects.filter(report_type=report_type).count()
+        else:
+            # Patient can only see their own stats
+            patient = get_object_or_404(UnifiedPatient, user=user)
+            total_reports = PatientReport.objects.filter(patient=patient).count()
+            pending_reports = PatientReport.objects.filter(patient=patient, status='pending').count()
+            urgent_reports = PatientReport.objects.filter(patient=patient, is_urgent=True).count()
+            
+            # Recent reports (last 30 days)
+            from django.utils import timezone
+            from datetime import timedelta
+            thirty_days_ago = timezone.now() - timedelta(days=30)
+            recent_reports = PatientReport.objects.filter(
+                patient=patient, 
+                created_at__gte=thirty_days_ago
+            ).count()
+            
+            # Reports by type
+            reports_by_type = {}
+            for report_type, _ in PatientReport.REPORT_TYPE_CHOICES:
+                reports_by_type[report_type] = PatientReport.objects.filter(
+                    patient=patient, 
+                    report_type=report_type
+                ).count()
+        
+        return Response({
+            'total_reports': total_reports,
+            'pending_reports': pending_reports,
+            'urgent_reports': urgent_reports,
+            'recent_reports': recent_reports,
+            'reports_by_type': reports_by_type
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Get report stats error: {e}")
+        return Response(
+            {'error': f'Failed to fetch stats: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# Report Comments Views
+class ReportCommentListCreateView(generics.ListCreateAPIView):
+    """List and create report comments"""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    ordering = ['created_at']
+    
+    def get_queryset(self):
+        report_id = self.kwargs['report_id']
+        user = self.request.user
+        
+        # Check if user has access to the report
+        if user.role == 'doctor':
+            report = get_object_or_404(PatientReport, id=report_id)
+        else:
+            report = get_object_or_404(PatientReport, id=report_id, patient__user=user)
+        
+        return ReportComment.objects.filter(report=report)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ReportCommentCreateSerializer
+        return ReportCommentSerializer
+    
+    def perform_create(self, serializer):
+        report_id = self.kwargs['report_id']
+        report = get_object_or_404(PatientReport, id=report_id)
+        serializer.save(report=report, author=self.request.user)
+
+
+# Report Sharing Views
+class ReportShareListCreateView(generics.ListCreateAPIView):
+    """List and create report shares"""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        report_id = self.kwargs['report_id']
+        user = self.request.user
+        
+        # Check if user has access to the report
+        if user.role == 'doctor':
+            report = get_object_or_404(PatientReport, id=report_id)
+        else:
+            report = get_object_or_404(PatientReport, id=report_id, patient__user=user)
+        
+        return ReportShare.objects.filter(report=report)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ReportShareCreateSerializer
+        return ReportShareSerializer
+    
+    def perform_create(self, serializer):
+        report_id = self.kwargs['report_id']
+        report = get_object_or_404(PatientReport, id=report_id)
+        
+        # Generate access token
+        import secrets
+        access_token = secrets.token_urlsafe(32)
+        
+        serializer.save(report=report, shared_by=self.request.user, access_token=access_token)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def download_patient_report(request, report_id):
+    """Download a patient report file from Supabase storage"""
+    try:
+        # Get report
+        user = request.user
+        if user.role == 'doctor':
+            report = get_object_or_404(PatientReport, id=report_id)
+        else:
+            report = get_object_or_404(PatientReport, id=report_id, patient__user=user)
+        
+        # Download file from storage
+        download_result = storage_service.download_report_file(report.file_path)
+        
+        if not download_result.get('success'):
+            return Response(
+                {'error': f'Download failed: {download_result.get("error")}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Return file content
+        from django.http import HttpResponse
+        response = HttpResponse(
+            download_result['file_content'], 
+            content_type=report.file_type
+        )
+        response['Content-Disposition'] = f'attachment; filename="{report.file_name}"'
+        return response
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Report download error: {e}")
+        return Response(
+            {'error': f'Download failed: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

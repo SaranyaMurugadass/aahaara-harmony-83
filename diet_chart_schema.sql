@@ -116,3 +116,4 @@ COMMENT ON COLUMN public.diet_charts.meal_distribution IS 'Percentage distributi
 COMMENT ON COLUMN public.diet_charts.dosha_focus IS 'Array of doshas to focus on (e.g., ["pacify_vata", "aggravate_kapha"])';
 COMMENT ON COLUMN public.diet_charts.generation_parameters IS 'Parameters used for AI generation (model version, preferences, etc.)';
 
+

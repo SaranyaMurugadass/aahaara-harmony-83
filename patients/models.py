@@ -258,3 +258,133 @@ class Consultation(models.Model):
     
     def get_status_display(self):
         return dict(self.STATUS_CHOICES).get(self.status, self.status)
+
+
+class PatientReport(models.Model):
+    """Model for storing patient report metadata"""
+    
+    REPORT_TYPE_CHOICES = [
+        ('blood-test', 'Blood Test'),
+        ('urine-test', 'Urine Test'),
+        ('xray', 'X-Ray'),
+        ('mri', 'MRI Scan'),
+        ('ct-scan', 'CT Scan'),
+        ('ultrasound', 'Ultrasound'),
+        ('ecg', 'ECG'),
+        ('consultation', 'Consultation Report'),
+        ('prescription', 'Prescription'),
+        ('other', 'Other'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('reviewed', 'Reviewed'),
+        ('archived', 'Archived'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(UnifiedPatient, on_delete=models.CASCADE, related_name='reports')
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_reports')
+    
+    # Report details
+    report_type = models.CharField(max_length=50, choices=REPORT_TYPE_CHOICES)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    
+    # File information
+    file_name = models.CharField(max_length=255)
+    file_path = models.CharField(max_length=500)  # Path in Supabase storage
+    file_size = models.BigIntegerField()  # File size in bytes
+    file_type = models.CharField(max_length=100)  # MIME type
+    public_url = models.URLField(blank=True, null=True)  # Public URL from Supabase
+    
+    # Report metadata
+    report_date = models.DateField(blank=True, null=True)  # Date when report was created (not uploaded)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    is_urgent = models.BooleanField(default=False)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Patient Report'
+        verbose_name_plural = 'Patient Reports'
+        indexes = [
+            models.Index(fields=['patient', 'report_type']),
+            models.Index(fields=['patient', 'created_at']),
+            models.Index(fields=['status', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.patient.user_name} - {self.title} ({self.report_type})"
+    
+    @property
+    def file_size_mb(self):
+        """Return file size in MB"""
+        return round(self.file_size / (1024 * 1024), 2)
+    
+    @property
+    def is_recent(self):
+        """Check if report was uploaded within last 7 days"""
+        from django.utils import timezone
+        from datetime import timedelta
+        return self.created_at >= timezone.now() - timedelta(days=7)
+
+
+class ReportComment(models.Model):
+    """Model for storing comments on patient reports"""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    report = models.ForeignKey(PatientReport, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='report_comments')
+    comment = models.TextField()
+    is_internal = models.BooleanField(default=True)  # Internal notes vs patient-visible comments
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Report Comment'
+        verbose_name_plural = 'Report Comments'
+    
+    def __str__(self):
+        return f"Comment on {self.report.title} by {self.author.first_name}"
+
+
+class ReportShare(models.Model):
+    """Model for tracking report sharing with external parties"""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    report = models.ForeignKey(PatientReport, on_delete=models.CASCADE, related_name='shares')
+    shared_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_reports')
+    
+    # Sharing details
+    recipient_email = models.EmailField()
+    recipient_name = models.CharField(max_length=200, blank=True)
+    message = models.TextField(blank=True)
+    access_token = models.CharField(max_length=100, unique=True)  # For secure access
+    
+    # Access control
+    expires_at = models.DateTimeField()
+    is_accessed = models.BooleanField(default=False)
+    accessed_at = models.DateTimeField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Report Share'
+        verbose_name_plural = 'Report Shares'
+    
+    def __str__(self):
+        return f"Share of {self.report.title} to {self.recipient_email}"
+    
+    @property
+    def is_expired(self):
+        """Check if share link has expired"""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at

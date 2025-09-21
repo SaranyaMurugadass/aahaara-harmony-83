@@ -43,3 +43,4 @@ WHERE tablename IN ('prakriti_analyses', 'disease_analyses', 'consultations');
 
 
 
+

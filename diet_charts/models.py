@@ -27,7 +27,7 @@ class DietChart(models.Model):
     # Basic Info
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient = models.ForeignKey(UnifiedPatient, on_delete=models.CASCADE, related_name='diet_charts')
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_diet_charts')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_diet_charts', db_column='created_by_id')
     
     # Chart Details
     chart_name = models.CharField(max_length=255)

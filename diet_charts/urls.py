@@ -4,7 +4,9 @@ from .views import (
     DietChartDetailView,
     DietChartSummaryListView,
     get_patient_diet_charts,
+    get_patient_latest_diet_chart,
     generate_diet_chart,
+    save_diet_chart,
     get_diet_chart_stats
 )
 
@@ -21,9 +23,13 @@ urlpatterns = [
     
     # Patient-specific endpoints
     path('patient/<uuid:patient_id>/', get_patient_diet_charts, name='patient-diet-charts'),
+    path('patient/<uuid:patient_id>/latest/', get_patient_latest_diet_chart, name='patient-latest-diet-chart'),
     
     # Generation endpoint
     path('generate/', generate_diet_chart, name='generate-diet-chart'),
+    
+    # Save endpoint
+    path('save/', save_diet_chart, name='save-diet-chart'),
     
     # Statistics endpoint
     path('stats/', get_diet_chart_stats, name='diet-chart-stats'),

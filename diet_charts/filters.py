@@ -58,3 +58,4 @@ class DietChartFilter(django_filters.FilterSet):
             'food_restrictions', 'version'
         ]
 
+

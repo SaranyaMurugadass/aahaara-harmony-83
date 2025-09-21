@@ -95,3 +95,4 @@ CREATE TRIGGER update_food_items_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_food_items_updated_at();
 
+

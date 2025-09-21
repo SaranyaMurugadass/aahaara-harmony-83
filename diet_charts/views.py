@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from datetime import date, timedelta
 from .models import DietChart
 from .serializers import (
     DietChartSerializer,
@@ -74,6 +75,27 @@ def get_patient_diet_charts(request, patient_id):
         )
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_patient_latest_diet_chart(request, patient_id):
+    """Get the latest diet chart for a specific patient."""
+    try:
+        latest_chart = DietChart.objects.filter(patient_id=patient_id).order_by('-created_at').first()
+        if latest_chart:
+            serializer = DietChartSerializer(latest_chart)
+            return Response(serializer.data)
+        else:
+            return Response(
+                {'message': 'No diet chart found for this patient'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to fetch latest diet chart: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_diet_chart(request):
@@ -135,7 +157,6 @@ def generate_diet_chart(request):
         # Calculate target calories
         target_calories = 2000  # Default
         if patient.weight and patient.height and patient.date_of_birth:
-            from datetime import date
             today = date.today()
             age = today.year - patient.date_of_birth.year
             if today.month < patient.date_of_birth.month or (today.month == patient.date_of_birth.month and today.day < patient.date_of_birth.day):
@@ -197,9 +218,39 @@ def generate_diet_chart(request):
         )
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_diet_chart(request):
+    """Save a diet chart (create or update)."""
+    try:
+        chart_id = request.data.get('id')
+        
+        if chart_id:
+            # Update existing chart
+            chart = get_object_or_404(DietChart, id=chart_id)
+            serializer = DietChartUpdateSerializer(chart, data=request.data, partial=True)
+        else:
+            # Create new chart
+            serializer = DietChartCreateSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            if chart_id:
+                chart = serializer.save()
+            else:
+                chart = serializer.save(created_by=request.user)
+            return Response(DietChartSerializer(chart).data, status=status.HTTP_200_OK if chart_id else status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to save diet chart: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 def generate_sample_meals(chart_type, target_calories, meal_distribution):
     """Generate sample meals for the diet chart."""
-    from datetime import date, timedelta
     
     days = 7 if chart_type == '7_day' else 14 if chart_type == '14_day' else 30
     daily_meals = {}
@@ -268,7 +319,6 @@ def get_diet_chart_stats(request):
             charts_by_type[chart_type] = DietChart.objects.filter(chart_type=chart_type).count()
         
         # Recent charts (last 30 days)
-        from datetime import date, timedelta
         thirty_days_ago = date.today() - timedelta(days=30)
         recent_charts = DietChart.objects.filter(created_at__date__gte=thirty_days_ago).count()
         

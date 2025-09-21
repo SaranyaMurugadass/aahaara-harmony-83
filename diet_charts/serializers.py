@@ -69,7 +69,7 @@ class DietChartCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DietChart
         fields = [
-            'patient', 'chart_name', 'chart_type', 'status', 'start_date', 'end_date',
+            'patient', 'created_by', 'chart_name', 'chart_type', 'status', 'start_date', 'end_date',
             'total_days', 'prakriti_analysis', 'disease_analysis', 'patient_preferences',
             'target_calories', 'meal_distribution', 'dosha_focus', 'food_restrictions',
             'daily_meals', 'notes', 'is_ai_generated', 'generation_parameters'
