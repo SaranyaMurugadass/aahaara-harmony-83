@@ -31,9 +31,25 @@ class DietChartListCreateView(generics.ListCreateAPIView):
             return DietChartCreateSerializer
         return DietChartSerializer
     
+    def create(self, request, *args, **kwargs):
+        print(f"🔍 Create request received: {request.data}")
+        print(f"🔍 Request user: {request.user}")
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            print(f"❌ Error in create method: {e}")
+            raise
+    
     def perform_create(self, serializer):
         # Set the created_by to the current user
-        serializer.save(created_by=self.request.user)
+        print(f"🔍 Creating diet chart with data: {serializer.validated_data}")
+        print(f"🔍 Current user: {self.request.user}")
+        try:
+            serializer.save(created_by=self.request.user)
+            print("✅ Diet chart created successfully")
+        except Exception as e:
+            print(f"❌ Error creating diet chart: {e}")
+            raise
 
 
 class DietChartDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -125,15 +141,15 @@ def generate_diet_chart(request):
         # Try to get latest prakriti analysis
         try:
             from patients.models import PrakritiAnalysis
-            latest_prakriti = PrakritiAnalysis.objects.filter(patient=patient).order_by('-created_at').first()
+            latest_prakriti = PrakritiAnalysis.objects.filter(patient=patient).order_by('-analysis_date').first()
             if latest_prakriti:
                 prakriti_analysis = {
                     'vata_score': latest_prakriti.vata_score,
                     'pitta_score': latest_prakriti.pitta_score,
                     'kapha_score': latest_prakriti.kapha_score,
-                    'dominant_dosha': latest_prakriti.dominant_dosha,
-                    'constitution_type': latest_prakriti.constitution_type,
-                    'analysis_date': latest_prakriti.created_at.isoformat()
+                    'dominant_dosha': latest_prakriti.primary_dosha,
+                    'constitution_type': latest_prakriti.primary_dosha,
+                    'analysis_date': latest_prakriti.analysis_date.isoformat()
                 }
         except Exception as e:
             print(f"Error fetching prakriti analysis: {e}")
@@ -141,7 +157,7 @@ def generate_diet_chart(request):
         # Try to get latest disease analysis
         try:
             from patients.models import DiseaseAnalysis
-            latest_diseases = DiseaseAnalysis.objects.filter(patient=patient).order_by('-created_at')
+            latest_diseases = DiseaseAnalysis.objects.filter(patient=patient).order_by('-diagnosis_date')
             if latest_diseases.exists():
                 disease_analysis = []
                 for disease in latest_diseases:
@@ -149,7 +165,7 @@ def generate_diet_chart(request):
                         'disease_name': disease.disease_name,
                         'severity': disease.severity,
                         'symptoms': disease.symptoms,
-                        'diagnosis_date': disease.created_at.isoformat()
+                        'diagnosis_date': disease.diagnosis_date.isoformat()
                     })
         except Exception as e:
             print(f"Error fetching disease analysis: {e}")

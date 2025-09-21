@@ -69,14 +69,16 @@ class DietChartCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DietChart
         fields = [
-            'patient', 'created_by', 'chart_name', 'chart_type', 'status', 'start_date', 'end_date',
+            'patient', 'chart_name', 'chart_type', 'status', 'start_date', 'end_date',
             'total_days', 'prakriti_analysis', 'disease_analysis', 'patient_preferences',
             'target_calories', 'meal_distribution', 'dosha_focus', 'food_restrictions',
             'daily_meals', 'notes', 'is_ai_generated', 'generation_parameters'
         ]
+        # Remove created_by from fields since it will be set automatically
     
     def validate_daily_meals(self, value):
         """Validate the daily meals structure."""
+        print(f"🔍 Validating daily_meals: {type(value)} - {value}")
         if not value:
             raise serializers.ValidationError("Daily meals cannot be empty.")
         
@@ -100,6 +102,25 @@ class DietChartCreateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(f"Meal {meal_key} in {day_key} calories must be non-negative.")
         
         return value
+    
+    def validate(self, data):
+        """Validate the diet chart data."""
+        print(f"🔍 Validating diet chart data: {data}")
+        
+        # Validate date order
+        if data.get('start_date') and data.get('end_date'):
+            if data['start_date'] > data['end_date']:
+                raise serializers.ValidationError("Start date must be before or equal to end date.")
+        
+        # Validate total days
+        if data.get('total_days') and data['total_days'] <= 0:
+            raise serializers.ValidationError("Total days must be positive.")
+        
+        # Validate target calories
+        if data.get('target_calories') and data['target_calories'] <= 0:
+            raise serializers.ValidationError("Target calories must be positive.")
+        
+        return data
 
 
 class DietChartUpdateSerializer(serializers.ModelSerializer):

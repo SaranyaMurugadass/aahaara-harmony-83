@@ -388,17 +388,46 @@ const GenerateDietChart = () => {
     loadPatients();
   }, [viewOnly]);
 
+  // Refresh patients function
+  const refreshPatients = async () => {
+    if (viewOnly) return;
+
+    try {
+      setLoading(true);
+      console.log("🔄 Refreshing patients list...");
+      const response = await apiClient.getPatients();
+      setPatients(response.results || []);
+
+      toast({
+        title: "Patients Refreshed",
+        description: `Found ${
+          response.results?.length || 0
+        } patients available for diet chart generation.`,
+      });
+    } catch (error) {
+      console.error("❌ Error refreshing patients:", error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh patients list. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredPatients = patients.filter((patient) => {
     // Add safety checks to prevent undefined errors
-    if (!patient || !patient.patient || !patient.patient.user_name) {
+    // The backend returns patients directly, not nested under 'patient' key
+    if (!patient || !patient.user_name) {
       console.log("🔍 Filtering out patient due to missing data:", patient);
       return false;
     }
-    const matches = patient.patient.user_name
+    const matches = patient.user_name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     console.log(
-      `🔍 Patient ${patient.patient.user_name} matches search "${searchTerm}":`,
+      `🔍 Patient ${patient.user_name} matches search "${searchTerm}":`,
       matches
     );
     return matches;
@@ -440,19 +469,14 @@ const GenerateDietChart = () => {
 
     try {
       // Call the real API to generate diet chart
-      const response = await apiClient.request("/diet-charts/generate/", {
-        method: "POST",
-        body: JSON.stringify({
-          patient_id: selectedPatient.patient?.id || selectedPatient.id,
-          chart_name: `${
-            selectedPatient.patient?.user_name || selectedPatient.name
-          } - 7 Day Diet Chart`,
-          chart_type: "7_day",
-          start_date: new Date().toISOString().split("T")[0],
-          end_date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0],
-        }),
+      const response = await apiClient.generateDietChart({
+        patient_id: selectedPatient.id,
+        chart_name: `${selectedPatient.user_name} - 7 Day Diet Chart`,
+        chart_type: "7_day",
+        start_date: new Date().toISOString().split("T")[0],
+        end_date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
       });
 
       console.log("🔍 Generated diet chart response:", response);
@@ -461,6 +485,11 @@ const GenerateDietChart = () => {
       const chartData = response.daily_meals || mockDietChart;
       setGeneratedChart(chartData);
       setCurrentView("edit");
+
+      // Store the generated chart ID for later use
+      if (response.id) {
+        localStorage.setItem("currentDietChartId", response.id);
+      }
 
       toast({
         title: "Diet Chart Generated!",
@@ -621,9 +650,113 @@ const GenerateDietChart = () => {
     }
   };
 
+  const handleSaveAndSendToPatient = async () => {
+    if (!selectedPatient || !generatedChart) {
+      toast({
+        title: "Error",
+        description: "No patient or diet chart selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const chartId = localStorage.getItem("currentDietChartId");
+
+      if (chartId) {
+        // Clean the generated chart data to match backend expectations
+        const cleanedChart = {};
+        Object.keys(generatedChart).forEach((dayKey) => {
+          cleanedChart[dayKey] = {};
+          Object.keys(generatedChart[dayKey]).forEach((mealKey) => {
+            const meal = generatedChart[dayKey][mealKey];
+            cleanedChart[dayKey][mealKey] = {
+              name: meal.name,
+              calories: meal.calories,
+              description: meal.description || meal.name,
+              suitable: meal.suitable || true,
+            };
+          });
+        });
+
+        // Update existing chart
+        await apiClient.saveDietChart({
+          id: chartId,
+          daily_meals: cleanedChart,
+          status: "active", // Mark as active so patient can see it
+          notes: `Diet chart generated and sent to ${
+            selectedPatient.user_name
+          } on ${new Date().toLocaleDateString()}`,
+        });
+      } else {
+        // Clean the generated chart data to match backend expectations
+        const cleanedChart = {};
+        Object.keys(generatedChart).forEach((dayKey) => {
+          cleanedChart[dayKey] = {};
+          Object.keys(generatedChart[dayKey]).forEach((mealKey) => {
+            const meal = generatedChart[dayKey][mealKey];
+            cleanedChart[dayKey][mealKey] = {
+              name: meal.name,
+              calories: meal.calories,
+              description: meal.description || meal.name,
+              suitable: meal.suitable || true,
+            };
+          });
+        });
+
+        // Create new chart
+        const response = await apiClient.createDietChart({
+          patient: selectedPatient.id,
+          chart_name: `${selectedPatient.user_name} - 7 Day Diet Chart`,
+          chart_type: "7_day",
+          status: "active",
+          start_date: new Date().toISOString().split("T")[0],
+          end_date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          total_days: 7,
+          daily_meals: cleanedChart,
+          target_calories: 2000, // Default, should be calculated based on patient
+          meal_distribution: {
+            breakfast: 0.25,
+            brunch: 0.15,
+            lunch: 0.3,
+            snack: 0.1,
+            dinner: 0.2,
+          },
+          notes: `Diet chart generated and sent to ${
+            selectedPatient.user_name
+          } on ${new Date().toLocaleDateString()}`,
+        });
+
+        if (response.id) {
+          localStorage.setItem("currentDietChartId", response.id);
+        }
+      }
+
+      toast({
+        title: "Diet Chart Sent Successfully!",
+        description: `The 7-day diet chart has been sent to ${selectedPatient.user_name} and is now available in their dashboard.`,
+      });
+
+      // Navigate back to doctor dashboard
+      setTimeout(() => {
+        navigate("/doctor-dashboard");
+      }, 2000);
+    } catch (error) {
+      console.error("❌ Error saving diet chart:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save diet chart. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderPatientCard = (patient) => {
     // Add safety checks to prevent undefined errors
-    if (!patient || !patient.patient) {
+    // The backend returns patients directly, not nested under 'patient' key
+    if (!patient || !patient.user_name) {
       return null;
     }
 
@@ -684,15 +817,15 @@ const GenerateDietChart = () => {
       return Math.round(bmr * activityMultiplier);
     };
 
-    const age = calculateAge(patient.patient.date_of_birth);
+    const age = calculateAge(patient.date_of_birth);
     const dominantDosha = getDominantDosha(patient.prakriti_analysis);
-    const targetCalories = calculateTargetCalories(patient.patient);
+    const targetCalories = calculateTargetCalories(patient);
 
-    const isSelected = selectedPatient?.patient?.id === patient.patient.id;
+    const isSelected = selectedPatient?.id === patient.id;
 
     return (
       <Card
-        key={patient.patient.id}
+        key={patient.id}
         className={`hover:shadow-warm transition-all duration-300 cursor-pointer ${
           isSelected ? "ring-2 ring-orange-500 bg-orange-50" : ""
         }`}
@@ -705,11 +838,9 @@ const GenerateDietChart = () => {
                 <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">
-                  {patient.patient.user_name}
-                </h3>
+                <h3 className="font-semibold text-lg">{patient.user_name}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {age} years • {patient.patient.gender}
+                  {age} years • {patient.gender}
                 </p>
                 <div className="flex space-x-2 mt-2">
                   <Badge variant="secondary">Dominant: {dominantDosha}</Badge>
@@ -798,7 +929,7 @@ const GenerateDietChart = () => {
               </div>
 
               <h2 className="text-2xl font-bold mb-2">
-                {selectedPatient?.name}
+                {selectedPatient?.user_name}
               </h2>
               <div className="flex justify-center space-x-4 mb-6">
                 <Badge variant="secondary">
@@ -937,9 +1068,7 @@ const GenerateDietChart = () => {
                 </Button>
                 <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                   {viewOnly ? "My 7-Day Diet Chart" : "7-Day Diet Chart - "}
-                  {!viewOnly &&
-                    (selectedPatient?.patient?.user_name ||
-                      selectedPatient?.name)}
+                  {!viewOnly && selectedPatient?.user_name}
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   {viewOnly
@@ -949,10 +1078,19 @@ const GenerateDietChart = () => {
               </div>
               <div className="flex space-x-2">
                 {!viewOnly && (
-                  <Button variant="outline" onClick={handleRegenerateChart}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Regenerate
-                  </Button>
+                  <>
+                    <Button variant="outline" onClick={handleRegenerateChart}>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Regenerate
+                    </Button>
+                    <Button
+                      onClick={handleSaveAndSendToPatient}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Send to Patient
+                    </Button>
+                  </>
                 )}
                 <Button onClick={handleExportPDF} className="no-print">
                   <Download className="w-4 h-4 mr-2" />
@@ -1045,9 +1183,7 @@ const GenerateDietChart = () => {
               </Button>
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 {viewOnly ? "My 7-Day Diet Chart" : "7-Day Diet Chart - "}
-                {!viewOnly &&
-                  (selectedPatient?.patient?.user_name ||
-                    selectedPatient?.name)}
+                {!viewOnly && selectedPatient?.user_name}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {viewOnly
@@ -1061,8 +1197,8 @@ const GenerateDietChart = () => {
 
       {/* Main Content */}
       <main ref={contentRef} className="container mx-auto px-6 py-8">
-        {/* Search */}
-        <div className="mb-8">
+        {/* Search and Refresh */}
+        <div className="mb-8 flex justify-between items-center">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
@@ -1072,6 +1208,15 @@ const GenerateDietChart = () => {
               className="pl-10"
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={refreshPatients}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh Patients
+          </Button>
         </div>
 
         {/* Patient Selection */}
@@ -1103,11 +1248,37 @@ const GenerateDietChart = () => {
                     <h3 className="text-lg font-semibold mb-2">
                       No patients found
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground mb-4">
                       {searchTerm
-                        ? "Try adjusting your search term"
-                        : "No patients available for diet chart generation"}
+                        ? "Try adjusting your search term or click 'Refresh Patients' to reload the list"
+                        : "No patients available for diet chart generation. Make sure patients have been added to the system."}
                     </p>
+                    {!searchTerm && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          To add patients:
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => navigate("/doctor-dashboard")}
+                          className="mr-2"
+                        >
+                          Go to Dashboard
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={refreshPatients}
+                          disabled={loading}
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 mr-2 ${
+                              loading ? "animate-spin" : ""
+                            }`}
+                          />
+                          Refresh Patients
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -1119,9 +1290,7 @@ const GenerateDietChart = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-orange-800">
-                          Selected Patient:{" "}
-                          {selectedPatient.patient?.user_name ||
-                            selectedPatient.name}
+                          Selected Patient: {selectedPatient.user_name}
                         </h3>
                         <p className="text-orange-600">
                           Ready to generate a personalized 7-day diet chart

@@ -400,23 +400,27 @@ class ApiClient {
   }
 
   async getDietCharts() {
-    return this.request("/diet-charts/charts/");
+    return this.request("/diet-charts/");
   }
 
   async getDietChart(id: string) {
-    return this.request(`/diet-charts/charts/${id}/`);
+    return this.request(`/diet-charts/${id}/`);
   }
 
   async createDietChart(data: {
     patient: string;
     chart_name: string;
     chart_type: string;
-    duration_days: number;
-    start_date: string;
-    end_date: string;
-    description?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    total_days?: number;
+    daily_meals?: any;
+    target_calories?: number;
+    meal_distribution?: any;
+    notes?: string;
   }) {
-    return this.request("/diet-charts/charts/", {
+    return this.request("/diet-charts/", {
       method: "POST",
       body: JSON.stringify(data),
     });
