@@ -1,3 +1,6 @@
+# Development requirements for Windows
+# Use this for local development on Windows
+
 # Django and core dependencies
 Django==4.2.24
 djangorestframework==3.14.0
@@ -5,8 +8,8 @@ django-cors-headers==4.3.1
 django-filter==23.3
 django-environ==0.11.2
 
-# Database
-psycopg2-binary==2.9.9
+# Database - Use psycopg2 instead of psycopg2-binary for Windows
+psycopg2==2.9.9
 dj-database-url==2.1.0
 
 # Authentication and security
@@ -31,6 +34,6 @@ python-decouple==3.8
 gunicorn==21.2.0
 whitenoise==6.6.0
 
-# Development and testing (optional for production)
+# Development and testing
 pytest==7.4.3
 pytest-django==4.7.0
